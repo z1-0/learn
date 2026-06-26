@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第十一课：函子 Functor</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第十一课：函子 Functor</h1>
+<div class="lesson-meta">
+  课程编号: 0011 | 前置知识: 第七课（类型类） | 预计时间: 35-40 分钟
+</div>
+
+<p>Functor 是 Haskell 中一个基础的类型类，它代表"可以映射"的东西。你一定已经用过它多次了。</p>
+
+<h2>1. Functor 定义</h2>
+
+<pre><code>class Functor f where
+  fmap :: (a -> b) -> f a -> f b
+
+-- 也可以使用中缀运算符 <$>
+(<$>) = fmap</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：Functor 是什么？</div>
+  <p>Functor 是一个"容器"或"上下文"，你可以对其内部的值应用函数。</p>
+  <p><span class="inline-code">fmap</span> 接受一个普通函数 <span class="inline-code">a -> b</span>，并将其应用到容器中的值上。</p>
+  <p>对比 Lisp：<span class="inline-code">mapcar</span> 是 List Functor 的 <span class="inline-code">fmap</span>。</p>
+</div>
+
+<h2>2. List 是 Functor</h2>
+
+<pre><code>-- fmap on lists = map
+instance Functor [] where
+  fmap = map
+
+Prelude> fmap (*2) [1,2,3]
+[2,4,6]
+Prelude> (*2) <$> [1,2,3]
+[2,4,6]
+Prelude> fmap even [1,2,3]
+[False,True,False]</code></pre>
+
+<h2>3. Maybe 是 Functor</h2>
+
+<pre><code>instance Functor Maybe where
+  fmap _ Nothing  = Nothing
+  fmap f (Just x) = Just (f x)
+
+Prelude> fmap (*2) (Just 5)
+Just 10
+Prelude> fmap (*2) Nothing
+Nothing
+Prelude> (*2) <$> Just 5
+Just 10</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Kotlin</div>
+    <code>maybe?.let { it * 2 }</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>(*2) <$> maybe</code>
+  </div>
+</div>
+
+<h2>4. Either 是 Functor</h2>
+
+<pre><code>instance Functor (Either a) where
+  fmap _ (Left x)  = Left x    -- 错误路径不动
+  fmap f (Right x) = Right (f x)
+
+Prelude> fmap (*2) (Right 5)
+Right 10
+Prelude> fmap (*2) (Left "error")
+Left "error"</code></pre>
+
+<h2>5. IO 也是 Functor</h2>
+
+<pre><code>instance Functor IO where
+  fmap f action = do
+    x <- action
+    return (f x)
+
+-- 实用示例：处理用户输入
+main :: IO ()
+main = do
+  -- 不用 fmap
+  input <- getLine
+  let upper = map toUpper input
+  putStrLn upper
+
+  -- 用 fmap（更简洁）
+  upper <- map toUpper <$> getLine
+  putStrLn upper</code></pre>
+
+<h2>6. Functor 法则</h2>
+
+<pre><code>-- 法则 1：身份
+fmap id  =  id
+-- 对比：map id [1,2,3] = [1,2,3]
+
+-- 法则 2：组合
+fmap (f . g)  =  fmap f . fmap g
+-- 对比：map (f . g) = map f . map g</code></pre>
+
+<div class="tip">
+  <strong>理解：</strong>Functor 法则确保 <span class="inline-code">fmap</span> 只映射内部的值，不会改变容器的结构。
+</div>
+
+<h2>7. 常见 Functor 总结</h2>
+
+<table class="type-table">
+  <tr><th>类型</th><th><span class="inline-code">f a</span></th><th><span class="inline-code">fmap f</span> 的效果</th></tr>
+  <tr><td><span class="inline-code">[]</span></td><td>列表</td><td>对每个元素应用 <span class="inline-code">f</span></td></tr>
+  <tr><td><span class="inline-code">Maybe</span></td><td>可能有值</td><td>对 <span class="inline-code">Just</span> 的值应用 <span class="inline-code">f</span>，<span class="inline-code">Nothing</span> 不变</td></tr>
+  <tr><td><span class="inline-code">Either e</span></td><td>可能出错</td><td>对 <span class="inline-code">Right</span> 的值应用 <span class="inline-code">f</span>，<span class="inline-code">Left</span> 不变</td></tr>
+  <tr><td><span class="inline-code">IO</span></td><td>IO 计算</td><td>对结果应用 <span class="inline-code">f</span></td></tr>
+  <tr><td><span class="inline-code">(->) r</span></td><td>函数</td><td>组合（<span class="inline-code">fmap = (.)</span>）</td></tr>
+</table>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>对 <span class="inline-code">Just [1, 2, 3]</span> 应用 <span class="inline-code">fmap (map (*2))</span>，结果是什么？</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>用 <span class="inline-code"><$></span> 重写以下代码：</p>
+  <pre><code>main = do
+  line <- getLine
+  putStrLn (reverse line)</code></pre>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>定义一个 <span class="inline-code">Tree</span> 类型并为其实现 <span class="inline-code">Functor</span>：</p>
+  <pre><code>data Tree a = Leaf a | Node (Tree a) (Tree a)</code></pre>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li>Functor = 可映射的容器/上下文</li>
+  <li><span class="inline-code">fmap :: (a -> b) -> f a -> f b</span> 或 <span class="inline-code"><$></span></li>
+  <li>List、Maybe、Either、IO 都是 Functor</li>
+  <li>Functor 法则保证结构不变</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0010-maybe-and-error-handling.html">0010 - Maybe 与错误处理</a><br>
+  <strong>下一课：</strong><a href="0012-applicatives.html">0012 - 应用函子 Applicative</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

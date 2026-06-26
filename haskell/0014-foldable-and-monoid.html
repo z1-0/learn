@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第十四课：Foldable 与 Monoid</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第十四课：Foldable 与 Monoid</h1>
+<div class="lesson-meta">
+  课程编号: 0014 | 前置知识: 第四课（列表与递归） | 预计时间: 35-40 分钟
+</div>
+
+<p>Foldable 代表"可折叠"的数据结构，Monoid 代表"可合并"的值。它们经常一起使用。</p>
+
+<h2>1. 回顾：列表的 fold</h2>
+
+<pre><code>-- foldl：从左到右折叠
+foldl :: (b -> a -> b) -> b -> [a] -> b
+foldl f acc []     = acc
+foldl f acc (x:xs) = foldl f (f acc x) xs
+
+Prelude> foldl (+) 0 [1,2,3]
+6
+
+-- foldr：从右到左折叠
+foldr :: (a -> b -> b) -> b -> [a] -> b
+foldr f acc []     = acc
+foldr f acc (x:xs) = f x (foldr f acc xs)
+
+Prelude> foldr (+) 0 [1,2,3]
+6</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Lisp</div>
+    <code>(reduce #'+ 0 '(1 2 3))</code>
+  </div>
+  <div>
+    <div class="comparison-label">JS</div>
+    <code>[1,2,3].reduce((a,b)=>a+b, 0)</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>foldl (+) 0 [1,2,3]</code>
+  </div>
+</div>
+
+<h2>2. Foldable 类型类</h2>
+
+<pre><code>class Foldable t where
+  fold    :: Monoid m => t m -> m
+  foldMap :: Monoid m => (a -> m) -> t a -> m
+  foldl   :: (b -> a -> b) -> b -> t a -> b
+  foldr   :: (a -> b -> b) -> b -> t a -> b
+
+-- 任何 Foldable 类型都可以用
+Prelude> foldl (+) 0 [1,2,3]
+6
+Prelude> foldl (+) 0 (Just 5)
+5
+Prelude> foldl (+) 0 Nothing
+0</code></pre>
+
+<h2>3. Monoid 类型类</h2>
+
+<pre><code>class Monoid m where
+  mempty :: m           -- 单位元（空值）
+  mappend :: m -> m -> m  -- 结合操作
+  mconcat :: [m] -> m   -- 合并列表
+
+-- Monoid 可以用 (<>) 代替 mappend
+(<>) = mappend
+
+-- 常见 Monoid 实例
+instance Monoid [a] where
+  mempty = []
+  mappend = (++)
+
+instance Monoid (Sum Int) where  -- Sum 包装数字
+  mempty = Sum 0
+  mappend (Sum x) (Sum y) = Sum (x + y)
+
+instance Monoid (Product Int) where
+  mempty = Product 1
+  mappend (Product x) (Product y) = Product (x * y)</code></pre>
+
+<h2>4. 使用 Monoid</h2>
+
+<pre><code>-- 字符串合并
+Prelude> "hello" <> " " <> "world"
+"hello world"
+
+-- 列表合并
+Prelude> [1,2] <> [3,4]
+[1,2,3,4]
+
+-- 使用 mconcat
+Prelude> mconcat ["a", "b", "c"]
+"abc"
+
+-- Sum 和 Product
+import Data.Monoid
+Prelude> getSum (Sum 3 <> Sum 4)
+7
+Prelude> getProduct (Product 3 <> Product 4)
+12</code></pre>
+
+<h2>5. foldMap：折叠和映射的组合</h2>
+
+<pre><code>-- foldMap = map + fold
+foldMap :: (Foldable t, Monoid m) => (a -> m) -> t a -> m
+
+-- 对每个元素应用函数，然后合并结果
+Prelude> foldMap show [1, 2, 3]
+"123"
+
+-- 计算所有字符数
+Prelude> foldMap length ["hello", "world"]
+10
+
+-- 检查是否所有值都为 True
+Prelude> foldMap All [True, True, False]
+All {getAll = False}</code></pre>
+
+<h2>6. 自己实现 Foldable</h2>
+
+<pre><code>data Tree a = Leaf a | Node (Tree a) (Tree a)
+  deriving (Show)
+
+instance Foldable Tree where
+  foldMap f (Leaf x)   = f x
+  foldMap f (Node l r) = foldMap f l <> foldMap f r
+
+-- 现在 Tree 可以折叠了！
+myTree :: Tree Int
+myTree = Node (Leaf 1) (Node (Leaf 2) (Leaf 3))
+
+Prelude> foldl (+) 0 myTree
+6
+Prelude> foldMap show myTree
+"123"</code></pre>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>用 <span class="inline-code">foldMap</span> 计算一个 <span class="inline-code">[Int]</span> 中所有偶数的和。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>为 <span class="inline-code">Maybe</span> 类型解释 <span class="inline-code">foldl (+) 0 (Just 5)</span> 和 <span class="inline-code">foldl (+) 0 Nothing</span> 的结果。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>定义一个 <span class="inline-code">Sum</span> 和 <span class="inline-code">Product</span> 的 Monoid 实例，不使用 <span class="inline-code">Data.Monoid</span>。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li>Foldable = 可折叠的数据结构</li>
+  <li>Monoid = 可合并的值（<span class="inline-code">mempty</span> + <span class="inline-code"><></span>）</li>
+  <li><span class="inline-code">foldMap</span> 同时做映射和合并</li>
+  <li>列表、Maybe、Tree 都可以是 Foldable</li>
+  <li>Monoid 法则：单位元 + 结合律</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0013-monads.html">0013 - 单子 Monad</a><br>
+  <strong>下一课：</strong><a href="0015-lazy-evaluation.html">0015 - 惰性求值</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第二十二课：Monad Transformers</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第二十二课：Monad Transformers</h1>
+<div class="lesson-meta">
+  课程编号: 0022 | 前置知识: 第十三课（Monad）、第十五课（IO） | 预计时间: 40-45 分钟
+</div>
+
+<p>真实世界中，你经常需要同时使用多个 Monad 的效果（IO + Maybe + State）。Monad Transformer 让你组合多个 Monad 的能力。</p>
+
+<h2>1. 问题：Monad 不组合</h2>
+
+<pre><code>-- 只有 IO：可以
+readConfig :: IO String
+
+-- 只有 Maybe：可以
+parseConfig :: String -> Maybe Config
+
+-- 但 IO + Maybe 呢？
+-- 不能直接组合 IO 和 Maybe！
+process :: IO (Maybe Config)  -- 也不好用</code></pre>
+
+<h2>2. MaybeT：IO + Maybe</h2>
+
+<pre><code>import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Class (lift)
+
+-- MaybeT IO 是一个 Monad，同时有 IO 和 Maybe 的效果
+-- IO   的失败效果
+-- Maybe 的失败效果
+
+readConfig :: MaybeT IO Config
+readConfig = do
+  content <- lift (readFile "config.json")
+  case parseConfig content of
+    Nothing -> do
+      lift (putStrLn "Parse failed!")
+      MaybeT (return Nothing)
+    Just cfg -> return cfg
+
+-- 使用
+main :: IO ()
+main = do
+  result <- runMaybeT readConfig
+  case result of
+    Nothing -> putStrLn "Failed to read config"
+    Just cfg -> putStrLn ("Config: " ++ show cfg)</code></pre>
+
+<h2>3. 常见 Transformer</h2>
+
+<table class="type-table">
+  <tr><th>Transformer</th><th>基础 Monad</th><th>效果</th></tr>
+  <tr><td><span class="inline-code">MaybeT</span></td><td><span class="inline-code">Maybe</span></td><td>可选失败</td></tr>
+  <tr><td><span class="inline-code">EitherT</span></td><td><span class="inline-code">Either</span></td><td>可恢复错误</td></tr>
+  <tr><td><span class="inline-code">ReaderT</span></td><td><span class="inline-code">Reader</span></td><td>只读环境</td></tr>
+  <tr><td><span class="inline-code">StateT</span></td><td><span class="inline-code">State</span></td><td>可变状态</td></tr>
+  <tr><td><span class="inline-code">WriterT</span></td><td><span class="inline-code">Writer</span></td><td>日志输出</td></tr>
+  <tr><td><span class="inline-code">ExceptT</span></td><td><span class="inline-code">Except</span></td><td>异常</td></tr>
+</table>
+
+<h2>4. ReaderT：依赖注入</h2>
+
+<pre><code>import Control.Monad.Trans.Reader
+
+data Config = Config { dbUrl :: String, port :: Int }
+
+-- ReaderT Config IO 可以访问 Config
+getPort :: ReaderT Config IO Int
+getPort = asks port
+
+connectDB :: ReaderT Config IO ()
+connectDB = do
+  url <- asks dbUrl
+  lift $ putStrLn ("Connecting to " ++ url)
+
+-- 运行
+main :: IO ()
+main = do
+  let config = Config "localhost" 8080
+  runReaderT connectDB config</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Java Spring</div>
+    <code>@Autowired Config config;</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>asks dbUrl  -- 从环境中读取</code>
+  </div>
+</div>
+
+<h2>5. StateT：可变状态</h2>
+
+<pre><code>import Control.Monad.Trans.State
+
+-- StateT s IO a
+-- s: 状态类型, a: 返回值
+
+counter :: StateT Int IO ()
+counter = do
+  -- 修改状态
+  modify (+1)
+  -- 读取状态
+  current <- get
+  lift $ putStrLn ("Count: " ++ show current)
+
+-- 运行
+main :: IO ()
+main = do
+  -- evalStateT: 返回最终值
+  -- execStateT: 返回最终状态
+  -- runStateT: 返回 (值, 状态)
+  result <- evalStateT (sequence_ (replicate 5 counter)) 0
+  return ()</code></pre>
+
+<h2>6. lift：提升操作</h2>
+
+<pre><code>-- lift 将内层 Monad 的操作提升到 Transformer 中
+
+-- 在 MaybeT IO 中使用 IO 操作
+example :: MaybeT IO ()
+example = do
+  lift (putStrLn "Hello")     -- IO → MaybeT IO
+  x <- lift getLine
+  guard (x /= "")             -- Maybe 效果
+  return ()
+
+-- 多层提升
+-- 在 StateT (MaybeT IO) 中
+-- lift (lift putStrLn "hi")
+-- 每层 Transformer 都需要一次 lift</code></pre>
+
+<h2>7. 实际例子：完整程序</h2>
+
+<pre><code>{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
+import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State
+import Control.Monad.Trans.Class
+
+data Config = Config { maxAttempts :: Int }
+data GameState = GameState { attempts :: Int, secret :: Int }
+
+-- 组合 App = ReaderT Config (StateT GameState IO)
+type App = ReaderT Config (StateT GameState IO)
+
+guess :: Int -> App Bool
+guess n = do
+  cfg <- ask
+  st  <- get
+  when (attempts st >= maxAttempts cfg) $
+    liftIO $ putStrLn "No more attempts!"
+  if n == secret st
+    then return True
+    else do
+      put (st { attempts = attempts st + 1 })
+      return False
+
+runApp :: Config -> GameState -> App a -> IO a
+runApp cfg st app = evalStateT (runReaderT app cfg) st</code></pre>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>用 <span class="inline-code">MaybeT IO</span> 写一个程序：读取一个文件，解析第一行为整数，如果失败或不存在则返回 <span class="inline-code">Nothing</span>。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>用 <span class="inline-code">ReaderT</span> 实现一个简单的模板引擎：环境中包含变量映射，渲染时替换 <span class="inline-code">{{var}}</span>。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>解释以下 Transformer 堆栈的效果：<span class="inline-code">StateT Int (ReaderT Config (MaybeT IO))</span>。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li>Monad Transformer 组合多个 Monad 的效果</li>
+  <li><span class="inline-code">lift</span> 提升内层 Monad 的操作</li>
+  <li>常见：<span class="inline-code">ReaderT</span>（配置）、<span class="inline-code">StateT</span>（状态）、<span class="inline-code">MaybeT</span>（失败）</li>
+  <li><span class="inline-code">runXxxT</span> 执行并解包</li>
+  <li>Transformer 堆栈是 Haskell 中管理复杂效果的惯用方式</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0021-traversable.html">0021 - Traversable 与遍历</a><br>
+  <strong>下一课：</strong><a href="0023-parser-combinators.html">0023 - 解析器组合子</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

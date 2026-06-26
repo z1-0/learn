@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第二十课：测试基础</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第二十课：测试基础</h1>
+<div class="lesson-meta">
+  课程编号: 0020 | 前置知识: 第十六课（项目结构） | 预计时间: 30-35 分钟
+</div>
+
+<p>测试是 Haskell 开发中的重要环节。得益于纯函数和类型系统，Haskell 代码天然容易测试。主流测试框架有 HSpec、HUnit 和 QuickCheck。</p>
+
+<h2>1. HUnit：单元测试</h2>
+
+<pre><code>import Test.HUnit
+
+-- 定义测试
+testAdd :: Test
+testAdd = TestCase $ do
+  assertEqual "add 1 2" 3 (add 1 2)
+
+testMultiply :: Test
+testMultiply = TestCase $ do
+  assertEqual "mul 2 3" 6 (mul 2 3)
+
+-- 组合测试
+tests :: Test
+tests = TestList [testAdd, testMultiply]
+
+-- 运行
+main :: IO ()
+main = do
+  result <- runTestTT tests
+  return ()
+
+-- 断言函数
+assertEqual :: String -> a -> a -> Assertion
+assertBool :: String -> Bool -> Assertion
+assertString :: String -> Assertion  -- 空 = 通过</code></pre>
+
+<h2>2. HSpec：行为驱动测试</h2>
+
+<pre><code>import Test.Hspec
+
+main :: IO ()
+main = hspec $ do
+  describe "List operations" $ do
+    it "returns the first element" $ do
+      head [1,2,3] `shouldBe` 1
+
+    it "returns the last element" $ do
+      last [1,2,3] `shouldBe` 3
+
+  describe "Math" $ do
+    it "adds numbers" $ do
+      add 1 2 `shouldBe` 3
+
+    it "handles negative numbers" $ do
+      add (-1) 1 `shouldBe` 0
+
+-- 匹配器
+shouldBe      :: a -> a -> Expectation
+shouldNotBe   :: a -> a -> Expectation
+shouldSatisfy :: a -> (a -> Bool) -> Expectation
+shouldThrow   :: IO a -> Selector e -> Expectation</code></pre>
+
+<h2>3. QuickCheck：属性测试</h2>
+
+<pre><code>import Test.QuickCheck
+
+-- 定义属性
+prop_reverse :: [Int] -> Bool
+prop_reverse xs = reverse (reverse xs) == xs
+
+prop_reverseAppend :: [Int] -> [Int] -> Bool
+prop_reverseAppend xs ys =
+  reverse (xs ++ ys) == reverse ys ++ reverse xs
+
+-- 运行测试
+main :: IO ()
+main = do
+  quickCheck prop_reverse
+  quickCheck prop_reverseAppend
+
+-- QuickCheck 自动生成随机测试数据
+-- 输出示例：
+-- +++ OK, passed 100 tests.</code></pre>
+
+<h2>4. 测试纯函数</h2>
+
+<pre><code>-- 被测试的代码 (src/Math.hs)
+module Math where
+
+factorial :: Integer -> Integer
+factorial 0 = 1
+factorial n = n * factorial (n - 1)
+
+isPrime :: Integer -> Bool
+isPrime n = n > 1 && all (\x -> n `mod` x /= 0) [2..floor (sqrt (fromIntegral n))]
+
+-- 测试 (test/MathSpec.hs)
+module Main where
+
+import Test.Hspec
+import Math
+
+main :: IO ()
+main = hspec $ do
+  describe "factorial" $ do
+    it "0! = 1" $ do
+      factorial 0 `shouldBe` 1
+    it "5! = 120" $ do
+      factorial 5 `shouldBe` 120
+
+  describe "isPrime" $ do
+    it "2 is prime" $ do
+      isPrime 2 `shouldBe` True
+    it "4 is not prime" $ do
+      isPrime 4 `shouldBe` False</code></pre>
+
+<h2>5. 测试 IO 代码</h2>
+
+<pre><code>-- IO 代码的测试
+import Test.Hspec
+import System.IO
+
+main :: IO ()
+main = hspec $ do
+  describe "file operations" $ do
+    it "writes and reads a file" $ do
+      writeFile "test.txt" "hello"
+      content <- readFile "test.txt"
+      content `shouldBe` "hello"
+
+-- 使用临时文件
+import System.IO.Temp
+
+main' = hspec $ do
+  it "processes files" $ do
+    withSystemTempFile "test.txt" $ \path handle -> do
+      hPutStr handle "input data"
+      hFlush handle
+      result <- processFile path
+      result `shouldBe` "expected output"</code></pre>
+
+<h2>6. cabal 测试配置</h2>
+
+<pre><code>-- my-project.cabal
+test-suite my-project-tests
+  type:             exitcode-stdio-1.0
+  main-is:          Spec.hs
+  hs-source-dirs:   test
+  build-depends:    base
+                  , my-project     -- 测试目标代码
+                  , hspec
+                  , QuickCheck
+  default-language: Haskell2010
+
+# 运行测试
+cabal test
+
+# 带详细输出
+cabal test --test-show-details=direct</code></pre>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>给一个 <span class="inline-code">fibonacci</span> 函数写 HUnit 测试：测试 n=0, n=1, n=10 的情况。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>用 QuickCheck 测试 <span class="inline-code">sort</span> 的属性：排序后列表长度不变，且每个元素都在原列表中。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>配置 cabal 项目支持 HSpec 测试，运行一次验证。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li>HUnit：传统单元测试，断言式</li>
+  <li>HSpec：行为驱动测试，描述式</li>
+  <li>QuickCheck：属性测试，自动生成用例</li>
+  <li>纯函数比 IO 代码更容易测试</li>
+  <li><span class="inline-code">cabal test</span> 运行项目测试</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0019-data-structures.html">0019 - 数据结构</a><br>
+  <strong>下一课：</strong><a href="0021-traversable.html">0021 - Traversable 与遍历</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

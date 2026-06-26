@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第九课：IO 与 do 记法</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第九课：IO 与 do 记法</h1>
+<div class="lesson-meta">
+  课程编号: 0009 | 前置知识: 第三课（函数定义） | 预计时间: 40-45 分钟
+</div>
+
+<p>IO 是 Haskell 中处理副作用的方式。与 Java 或 Python 不同，Haskell 用类型系统将纯代码与不纯代码严格分离。</p>
+
+<h2>1. 纯函数 vs 不纯函数</h2>
+
+<pre><code>-- 纯函数：相同输入 → 相同输出
+add :: Int -> Int -> Int
+add x y = x + y
+
+-- 不纯函数：返回值依赖外部世界
+getLine :: IO String           -- 读取一行输入
+putStrLn :: String -> IO ()    -- 输出一行
+
+-- main 是程序的入口
+main :: IO ()
+main = putStrLn "Hello, World!"</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：IO 类型</div>
+  <p><span class="inline-code">IO a</span> 表示"一个可能包含副作用的计算，执行后返回 <span class="inline-code">a</span> 类型的值"。</p>
+  <p><span class="inline-code">IO ()</span> 类似 Java 的 <span class="inline-code">void</span>——执行操作但不返回有意义的值。</p>
+</div>
+
+<h2>2. do 记法</h2>
+
+<pre><code>-- do 记法让你按顺序书写 IO 操作
+main :: IO ()
+main = do
+  putStrLn "What is your name?"
+  name <- getLine               -- 从 IO 中取出 String
+  putStrLn ("Hello, " ++ name ++ "!")
+  putStrLn "Nice to meet you."
+
+-- 不使用 <- 会丢弃返回值
+main = do
+  putStrLn "Line 1"
+  putStrLn "Line 2"</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Kotlin</div>
+    <code>println("What is your name?")<br>val name = readLine()<br>println("Hello, $name!")</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>do<br>  putStrLn "What is your name?"<br>  name <- getLine<br>  putStrLn ("Hello, " ++ name ++ "!")</code>
+  </div>
+</div>
+
+<h2>3. let 在 do 中</h2>
+
+<pre><code>main :: IO ()
+main = do
+  putStrLn "Enter a number:"
+  input <- getLine
+  let num = read input :: Int    -- 纯计算，用 let
+      doubled = num * 2
+  putStrLn ("Double is: " ++ show doubled)</code></pre>
+
+<div class="concept">
+  <div class="concept-title">关键区分：<- vs let</div>
+  <p><span class="inline-code"><-</span> 从 IO 操作中提取值（有副作用）</p>
+  <p><span class="inline-code">let</span> 定义纯表达式（无副作用）</p>
+  <p>在 do 中，<span class="inline-code">let</span> 不需要 <span class="inline-code">in</span>。</p>
+</div>
+
+<h2>4. return 不是你想的那样</h2>
+
+<pre><code>-- return 不是"返回"，而是"包装"
+-- 它把一个纯值放入 IO 中
+main :: IO ()
+main = do
+  let x = 42              -- x :: Int
+  y <- return x           -- y :: Int（从 IO Int 中取出）
+  print y
+
+-- return 的等价写法：
+return42 :: IO Int
+return42 = return 42
+
+-- 相当于：把纯值"提升"到 IO 中</code></pre>
+
+<div class="tip">
+  <strong>注意：</strong><span class="inline-code">return</span> 不是控制流关键字！它是一个普通函数，把纯值包装到 <span class="inline-code">IO</span> 中。
+</div>
+
+<h2>5. 常用 IO 函数</h2>
+
+<pre><code>putStrLn :: String -> IO ()     -- 输出一行
+print    :: Show a => a -> IO () -- 输出任意可 show 的值
+getLine  :: IO String           -- 读取一行
+getChar  :: IO Char             -- 读取一个字符
+readFile :: FilePath -> IO String   -- 读取文件
+writeFile :: FilePath -> String -> IO () -- 写入文件
+interact :: (String -> String) -> IO () -- 读取全部输入，处理，输出</code></pre>
+
+<h2>6. 简单例子：交互式程序</h2>
+
+<pre><code>main :: IO ()
+main = do
+  putStrLn "Welcome to the Haskell calculator!"
+  putStrLn "Enter two numbers:"
+  a <- readLn :: IO Double
+  b <- readLn :: IO Double
+  putStrLn ("Sum: " ++ show (a + b))
+  putStrLn ("Product: " ++ show (a * b))</code></pre>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>写一个程序：询问用户的名字，然后打印"Hello, [名字]!"，并打印名字的长度。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>写一个程序：不断读取用户输入，直到用户输入"quit"。</p>
+  <pre><code>main :: IO ()
+main = do
+  line <- getLine
+  if line == "quit"
+    then return ()
+    else do
+      putStrLn ("You said: " ++ line)
+      main</code></pre>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>用 <span class="inline-code">interact</span> 写一个程序，将输入全部转为大写。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li><span class="inline-code">IO a</span> 表示带副作用的计算</li>
+  <li><span class="inline-code">do</span> 记法按顺序组合 IO 操作</li>
+  <li><span class="inline-code"><-</span> 提取值，<span class="inline-code">let</span> 纯定义</li>
+  <li><span class="inline-code">return</span> 包装值到 IO，不是控制流</li>
+  <li>纯函数和 IO 函数严格分离</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0008-module-system.html">0008 - 模块系统</a><br>
+  <strong>下一课：</strong><a href="0010-maybe-and-error-handling.html">0010 - Maybe 与错误处理</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

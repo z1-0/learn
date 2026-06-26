@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第十九课：数据结构</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第十九课：数据结构</h1>
+<div class="lesson-meta">
+  课程编号: 0019 | 前置知识: 第十八课（字符串处理） | 预计时间: 35-40 分钟
+</div>
+
+<p>除了列表，Haskell 标准库提供了多种高效的数据结构。<span class="inline-code">containers</span> 包是其中最常用的。</p>
+
+<h2>1. Map（映射/字典）</h2>
+
+<pre><code>import qualified Data.Map as Map
+import Data.Map (Map)
+
+-- 创建 Map
+empty :: Map Int String
+empty = Map.empty
+
+fromList :: Map Int String
+fromList = Map.fromList [(1, "one"), (2, "two"), (3, "three")]
+
+-- 基本操作
+Prelude> Map.lookup 2 fromList
+Just "two"
+Prelude> Map.lookup 5 fromList
+Nothing
+
+-- 插入和删除
+Prelude> Map.insert 4 "four" fromList
+fromList [(1,"one"),(2,"two"),(3,"three"),(4,"four")]
+
+Prelude> Map.delete 2 fromList
+fromList [(1,"one"),(3,"three")]
+
+-- 遍历
+Prelude> Map.map (*2) (Map.fromList [(1, 10), (2, 20)])
+fromList [(1,20),(2,40)]
+
+Prelude> Map.filter (>15) (Map.fromList [(1, 10), (2, 20)])
+fromList [(2,20)]</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">TypeScript</div>
+    <code>new Map([[1,"one"],[2,"two"]])</code>
+  </div>
+  <div>
+    <div class="comparison-label">Java</div>
+    <code>Map.of(1, "one", 2, "two")</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>Map.fromList [(1,"one"),(2,"two")]</code>
+  </div>
+</div>
+
+<h2>2. Set（集合）</h2>
+
+<pre><code>import qualified Data.Set as Set
+import Data.Set (Set)
+
+-- 创建 Set
+setFromList :: Set Int
+setFromList = Set.fromList [1, 2, 3, 2, 1]  -- 去重
+
+Prelude> setFromList
+fromList [1,2,3]
+
+-- 基本操作
+Prelude> Set.member 2 setFromList
+True
+Prelude> Set.insert 4 setFromList
+fromList [1,2,3,4]
+Prelude> Set.delete 2 setFromList
+fromList [1,3]
+
+-- 集合运算
+Prelude> Set.union (Set.fromList [1,2]) (Set.fromList [2,3])
+fromList [1,2,3]
+Prelude> Set.intersection (Set.fromList [1,2]) (Set.fromList [2,3])
+fromList [2]
+Prelude> Set.difference (Set.fromList [1,2]) (Set.fromList [2,3])
+fromList [1]</code></pre>
+
+<h2>3. Seq（序列/双端队列）</h2>
+
+<pre><code>import qualified Data.Sequence as Seq
+import Data.Sequence (Seq, (><))
+
+-- 创建 Seq
+seq :: Seq Int
+seq = Seq.fromList [1, 2, 3]
+
+-- 两端操作
+Prelude> Seq.<| 0 seq    -- 左端插入
+fromList [0,1,2,3]
+Prelude> seq Seq.|> 4    -- 右端插入
+fromList [1,2,3,4]
+
+-- 索引
+Prelude> Seq.index seq 1
+2
+
+-- 拼接
+Prelude> seq >< Seq.fromList [4,5]
+fromList [1,2,3,4,5]
+
+-- 对比列表：两端操作都是 O(1)
+-- 列表只在左端是 O(1)</code></pre>
+
+<h2>4. 实际例子：单词索引</h2>
+
+<pre><code>import qualified Data.Map as Map
+import qualified Data.Set as Set
+import qualified Data.Text as T
+
+type WordIndex = Map.Map T.Text (Set.Set Int)
+
+buildIndex :: [T.Text] -> WordIndex
+buildIndex = foldl addWord Map.empty . zip [0..]
+  where
+    addWord idx (lineNo, words) =
+      Map.alter (addLine lineNo) words idx
+    addLine lineNo Nothing  = Just (Set.singleton lineNo)
+    addLine lineNo (Just s) = Just (Set.insert lineNo s)</code></pre>
+
+<h2>5. 性能对比</h2>
+
+<table class="type-table">
+  <tr><th>数据结构</th><th>左端插入</th><th>右端插入</th><th>索引</th><th>查找</th></tr>
+  <tr><td>List</td><td>O(1)</td><td>O(n)</td><td>O(n)</td><td>O(n)</td></tr>
+  <tr><td>Seq</td><td>O(1)</td><td>O(1)</td><td>O(log n)</td><td>O(n)</td></tr>
+  <tr><td>Map</td><td>—</td><td>—</td><td>—</td><td>O(log n)</td></tr>
+  <tr><td>Set</td><td>—</td><td>—</td><td>—</td><td>O(log n)</td></tr>
+</table>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>用 <span class="inline-code">Map</span> 实现一个电话簿：添加联系人、查找联系人、列出所有联系人。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>读取一个文本文件，用 <span class="inline-code">Set</span> 找出所有唯一的单词。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>用 <span class="inline-code">Seq</span> 实现一个"最近浏览"列表，最新添加的在头部，最多保留 10 条。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li><span class="inline-code">Map</span>：键值对字典，O(log n) 查找</li>
+  <li><span class="inline-code">Set</span>：不重复元素集合</li>
+  <li><span class="inline-code">Seq</span>：双端队列，两端 O(1)</li>
+  <li>这些结构都来自 <span class="inline-code">containers</span> 包</li>
+  <li>选择正确的数据结构很重要</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0018-string-processing.html">0018 - 字符串处理</a><br>
+  <strong>下一课：</strong><a href="0020-testing-basics.html">0020 - 测试基础</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

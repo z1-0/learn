@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第四课：列表与递归</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第四课：列表与递归</h1>
+<div class="lesson-meta">
+  课程编号: 0004 | 前置知识: 第三课（模式匹配） | 预计时间: 35-40 分钟
+</div>
+
+<p>列表是 Haskell 最核心的数据结构。这节课你将深入了解列表的工作原理，并学会用递归思维处理列表。</p>
+
+<h2>1. 列表的本质</h2>
+
+<p>列表是递归定义的：</p>
+<pre><code>-- 列表定义（本质）
+data [a] = []    -- 空列表
+         | a : [a]  -- 元素 + 列表尾部
+
+-- 所以 [1,2,3] 就是语法糖
+[1,2,3] = 1 : 2 : 3 : []</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：列表是递归的</div>
+  <p>列表要么是空 <span class="inline-code">[]</span>，要么是一个元素 cons 另一个列表 <span class="inline-code">x : xs</span>。</p>
+  <p>对比 Lisp：<span class="inline-code">'(1 2 3) = (cons 1 (cons 2 (cons 3 nil)))</span>。完全一样！</p>
+</div>
+
+<h2>2. 基本列表函数</h2>
+
+<table class="type-table">
+  <tr><th>函数</th><th>类型</th><th>说明</th><th>Lisp 对应</th></tr>
+  <tr><td><span class="inline-code">head</span></td><td><span class="inline-code">[a] -> a</span></td><td>取第一个元素</td><td><span class="inline-code">car</span></td></tr>
+  <tr><td><span class="inline-code">tail</span></td><td><span class="inline-code">[a] -> [a]</span></td><td>去掉第一个</td><td><span class="inline-code">cdr</span></td></tr>
+  <tr><td><span class="inline-code">null</span></td><td><span class="inline-code">[a] -> Bool</span></td><td>是否为空</td><td><span class="inline-code">null</span></td></tr>
+  <tr><td><span class="inline-code">(++)</span></td><td><span class="inline-code">[a] -> [a] -> [a]</span></td><td>拼接</td><td><span class="inline-code">append</span></td></tr>
+  <tr><td><span class="inline-code">take</span></td><td><span class="inline-code">Int -> [a] -> [a]</span></td><td>取前 n 个</td><td><span class="inline-code">subseq</span></td></tr>
+  <tr><td><span class="inline-code">drop</span></td><td><span class="inline-code">Int -> [a] -> [a]</span></td><td>去掉前 n 个</td><td><span class="inline-code">nthcdr</span></td></tr>
+  <tr><td><span class="inline-code">elem</span></td><td><span class="inline-code">a -> [a] -> Bool</span></td><td>是否包含</td><td><span class="inline-code">member</span></td></tr>
+  <tr><td><span class="inline-code">reverse</span></td><td><span class="inline-code">[a] -> [a]</span></td><td>反转</td><td><span class="inline-code">reverse</span></td></tr>
+</table>
+
+<pre><code>Prelude> head [1,2,3]
+1
+Prelude> tail [1,2,3]
+[2,3]
+Prelude> null []
+True
+Prelude> take 3 [1..10]
+[1,2,3]
+Prelude> drop 3 [1..10]
+[4,5,6,7,8,9,10]</code></pre>
+
+<div class="tip">
+  <strong>Lisp 用户注意：</strong>Haskell 的 <span class="inline-code">head</span>/<span class="inline-code">tail</span> 就是 Lisp 的 <span class="inline-code">car</span>/<span class="inline-code">cdr</span>。不过 Haskell 更安全——Lisp 在空列表上调用 <span class="inline-code">car</span> 返回 nil，Haskell 会报错。
+</div>
+
+<h2>3. 用递归实现列表函数</h2>
+
+<p>学习 Haskell 的最好方式之一是实现标准函数：</p>
+
+<pre><code>-- 实现 head
+head' :: [a] -> a
+head' (x:_) = x
+head' []   = error "empty list"
+
+-- 实现 tail
+tail' :: [a] -> [a]
+tail' (_:xs) = xs
+tail' []    = error "empty list"
+
+-- 实现 null
+null' :: [a] -> Bool
+null' [] = True
+null' _  = False
+
+-- 实现 take
+take' :: Int -> [a] -> [a]
+take' n _
+  | n <= 0  = []
+take' _ []     = []
+take' n (x:xs) = x : take' (n - 1) xs
+
+-- 实现 ++
+append' :: [a] -> [a] -> [a]
+append' []     ys = ys
+append' (x:xs) ys = x : append' xs ys</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：递归模式</div>
+  <p>所有列表递归函数都是这个模式：</p>
+  <pre><code>func []     = ...   -- 空列表情形
+func (x:xs) = ... x ... func xs ...  -- 递归情形</code></pre>
+  <p>对比 Nix：<span class="inline-code">builtins.foldl'</span> 也是递归遍历列表。</p>
+</div>
+
+<h2>4. 更多递归示例</h2>
+
+<pre><code>-- 列表求和
+sum' :: Num a => [a] -> a
+sum' []     = 0
+sum' (x:xs) = x + sum' xs
+
+-- 列表乘积
+product' :: Num a => [a] -> a
+product' [] = 1
+product' (x:xs) = x * product' xs
+
+-- 检查所有元素是否满足条件
+all' :: (a -> Bool) -> [a] -> Bool
+all' _ []     = True
+all' p (x:xs) = p x && all' p xs
+
+-- 取偶数
+evens :: [Int] -> [Int]
+evens [] = []
+evens (x:xs)
+  | even x    = x : evens xs
+  | otherwise = evens xs</code></pre>
+
+<h2>5. 列表推导</h2>
+
+<p>列表推导（List Comprehension）是构建列表的声明式语法：</p>
+
+<pre><code>-- 基本语法: [表达式 | 生成器, 过滤条件...]
+
+-- 从 1 到 10
+[x | x <- [1..10]]
+
+-- 只取偶数
+[x | x <- [1..10], even x]
+
+-- 对元素做变换
+[x * 2 | x <- [1..10]]
+
+-- 组合多个列表
+[(x, y) | x <- [1..3], y <- ['a', 'b']]
+-- 结果: [(1,'a'),(1,'b'),(2,'a'),(2,'b'),(3,'a'),(3,'b')]
+
+-- 多个过滤条件
+[x | x <- [1..50], x `mod` 7 == 0, even x]
+-- 结果: [14,28,42]</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Python</div>
+    <code>[x*2 for x in range(1,6) if x % 2 == 0]</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>[x*2 | x <- [1..5], even x]</code>
+  </div>
+</div>
+
+<div class="tip">
+  <strong>Nix 用户注意：</strong>列表推导类似 Nix 的函数式列表操作，但语法更接近数学集合记号。
+</div>
+
+<h2>6. 无限列表</h2>
+
+<p>Haskell 的惰性求值让你可以处理无限列表：</p>
+
+<pre><code>-- 无限列表
+Prelude> take 5 [1..]    -- 从 1 开始到无限
+[1,2,3,4,5]
+
+Prelude> take 10 (cycle [1,2,3])
+[1,2,3,1,2,3,1,2,3,1]
+
+Prelude> take 5 (repeat 42)
+[42,42,42,42,42]
+
+Prelude> take 5 (iterate (*2) 1)
+[1,2,4,8,16]</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：惰性与无限</div>
+  <p>Haskell 只计算你真正需要的部分。<span class="inline-code">[1..]</span> 不会真的创建无限列表，它只在你 <span class="inline-code">take</span> 时才产生值。</p>
+  <p>对比 Nix：Nix 也是惰性求值，但 Nix 没有无限列表的概念。</p>
+</div>
+
+<h2>7. zip 与 组合</h2>
+
+<pre><code>-- zip 合并两个列表
+Prelude> zip [1,2,3] ['a','b','c']
+[(1,'a'),(2,'b'),(3,'c')]
+
+-- zipWith 用函数合并
+Prelude> zipWith (+) [1,2,3] [10,20,30]
+[11,22,33]
+
+-- 斐波那契数列（经典）
+fibs :: [Int]
+fibs = 0 : 1 : zipWith (+) fibs (tail fibs)
+
+Prelude> take 10 fibs
+[0,1,1,2,3,5,8,13,21,34]</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：自引用列表</div>
+  <p><span class="inline-code">fibs</span> 用自己的 tail 参与计算——这在惰性语言中才可能。</p>
+  <p>这是 Haskell 最优雅的代码之一！</p>
+</div>
+
+<h2>练习</h2>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>用递归实现 <span class="inline-code">reverse'</span> 函数：</p>
+  <p>期望：<span class="inline-code">reverse' [1,2,3] = [3,2,1]</span></p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>用列表推导找出 1 到 100 中能同时被 3 和 5 整除的数。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>用 <span class="inline-code">take</span> 和 <span class="inline-code">zipWith</span> 生成前 20 个斐波那契数列。</p>
+  <p>提示：参考上面的 <span class="inline-code">fibs</span> 示例。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 4</div>
+  <p>实现一个函数 <span class="inline-code">repeat' :: a -> [a]</span>，返回一个无限列表（重复同一个元素）。</p>
+  <p>然后用 <span class="inline-code">take 5 (repeat' 7)</span> 测试。</p>
+</div>
+
+<h2>小结</h2>
+
+<p>你已经学会了：</p>
+<ul>
+  <li>列表的递归定义（<span class="inline-code">[]</span> 和 <span class="inline-code">:</span>）</li>
+  <li>用递归实现列表操作</li>
+  <li>列表推导（声明式构建列表）</li>
+  <li>无限列表和惰性求值</li>
+  <li><span class="inline-code">zip</span> 和 <span class="inline-code">zipWith</span></li>
+</ul>
+
+<div class="concept">
+  <div class="concept-title">关键要点</div>
+  <p>递归是 Haskell 的循环。列表递归的模式是：</p>
+  <p><span class="inline-code">[]</span> 基本情形 → <span class="inline-code">x:xs</span> 递归情形</p>
+  <p>对比 Lisp：<span class="inline-code">(car list)</span> 和 <span class="inline-code">(cdr list)</span> 完全对应 <span class="inline-code">x</span> 和 <span class="inline-code">xs</span>。</p>
+</div>
+
+<h2>推荐阅读</h2>
+
+<ul>
+  <li><a href="https://learnyouahaskell.github.io/starting-out.html#an-intro-to-lists">Learn You a Haskell: An Intro to Lists</a></li>
+  <li><a href="https://learnyouahaskell.github.io/syntax-in-functions.html#higher-order-lists">Learn You a Haskell: Haskell recursion</a></li>
+</ul>
+
+<div class="concept">
+  <div class="concept-title">有疑问？</div>
+  <p>列表和递归是 Haskell 的基石。如果不清楚，随时问我！</p>
+</div>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0003-functions-and-pattern-matching.html">0003 - 函数定义与模式匹配</a><br>
+  <strong>下一课：</strong><a href="0005-higher-order-functions.html">0005 - 高阶函数</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

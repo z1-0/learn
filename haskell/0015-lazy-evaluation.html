@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第十五课：惰性求值</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第十五课：惰性求值</h1>
+<div class="lesson-meta">
+  课程编号: 0015 | 前置知识: 第四课（列表） | 预计时间: 30-35 分钟
+</div>
+
+<p>Haskell 默认是惰性求值的——表达式只在需要时才被求值。这是 Haskell 最独特的特性之一。</p>
+
+<h2>1. 严格 vs 惰性</h2>
+
+<pre><code>-- 在严格语言中（Java、Python、Common Lisp）
+-- 参数在函数调用前就求值
+
+-- 在惰性语言中（Haskell、Nix）
+-- 参数只在被使用时才求值
+
+-- 例子：
+and :: Bool -> Bool -> Bool
+and False _ = False
+and True x  = x
+
+-- 在 Haskell 中：
+Prelude> and False (1/0 == 0)
+False
+-- 不会崩溃！因为第二个参数从未被使用</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Nix</div>
+    <code>false && (builtins.div 1 0 == 0)</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>False && (1/0 == 0)</code>
+  </div>
+</div>
+
+<div class="concept">
+  <div class="concept-title">概念：thunk</div>
+  <p>惰性求值中，未求值的表达式被封装为 <strong>thunk</strong>（延迟计算）。</p>
+  <p>只有当 thunk 的值被需要时，它才会被实际求值。</p>
+  <p>求值后，结果会被缓存（记忆化），下次使用不再计算。</p>
+</div>
+
+<h2>2. 无限列表</h2>
+
+<pre><code>-- 惰性求值让无限列表成为可能
+-- 因为只生成需要的部分
+
+-- 无限自然数
+naturals :: [Int]
+naturals = [1..]
+
+-- 无限 Fibonacci 数列
+fibs :: [Integer]
+fibs = 0 : 1 : zipWith (+) fibs (tail fibs)
+
+Prelude> take 10 fibs
+[0,1,1,2,3,5,8,13,21,34]
+
+-- 无限列表在需要时才计算
+Prelude> take 5 [1..]
+[1,2,3,4,5]
+
+Prelude> sum (takeWhile (<1000) [1..])
+499500</code></pre>
+
+<div class="tip">
+  <strong>注意：</strong>无限列表在 GHCi 中直接输入会无限输出！用 <span class="inline-code">take</span> 截取。<br>
+  对比 Lisp：Common Lisp 默认严格求值，无限列表需要特意构造（如 <span class="inline-code">series</span> 库）。
+</div>
+
+<h2>3. 惰性的实际影响</h2>
+
+<pre><code>-- 短路运算
+Prelude> any even [1..]   -- 不会死循环
+True
+
+-- 按需计算
+Prelude> head (filter even [1..])
+2
+-- filter 不会处理整个无限列表，找到第一个就停了
+
+-- 数据流处理
+process :: [Int] -> Int
+process xs = sum (take 10 (filter even (map (*2) xs)))
+
+-- 在严格语言中，map (*2) 会处理整个列表
+-- 在 Haskell 中，三个操作是融合执行的
+-- 只处理前 10 个满足条件的元素</code></pre>
+
+<h2>4. 惰性的陷阱</h2>
+
+<pre><code>-- 空间泄漏：foldl
+-- foldl (+) 0 [1..1000000] 会消耗大量内存！
+-- 因为 thunk 不断累积
+
+-- 解决方案：用 foldl'（严格版）
+import Data.List (foldl')
+Prelude> foldl' (+) 0 [1..1000000]
+
+-- foldr 对无限列表安全
+Prelude> take 5 (foldr (:) [] [1..])
+[1,2,3,4,5]
+
+-- foldl 对无限列表不安全</code></pre>
+
+<h2>5. 强制求值</h2>
+
+<pre><code>-- Bang 模式：在模式匹配处强制求值
+-- ! 表示这个参数必须被求值
+
+strictAdd :: Int -> Int -> Int
+strictAdd !x !y = x + y   -- x 和 y 会立即求值
+
+-- seq 函数：强制求值
+seq :: a -> b -> b
+-- 求值第一个参数，然后返回第二个
+
+strictFoldl :: (b -> a -> b) -> b -> [a] -> b
+strictFoldl f acc []     = acc
+strictFoldl f acc (x:xs) = let acc' = f acc x
+                           in seq acc' (strictFoldl f acc' xs)</code></pre>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>猜输出：<span class="inline-code">take 5 (repeat 42)</span> 的结果是什么？</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>用 <span class="inline-code">takeWhile</span> 和无限列表实现：找出所有小于 100 的平方数。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>为什么 <span class="inline-code">foldl (+) 0 (replicate 1000000 1)</span> 会消耗大量内存？如何修复？</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li>Haskell 默认惰性求值，表达式按需计算</li>
+  <li>无限列表是惰性求值的直接结果</li>
+  <li>惰性让代码更模块化（生成和使用分离）</li>
+  <li>警惕空间泄漏：需要时用 <span class="inline-code">foldl'</span> 或 bang 模式</li>
+  <li>与 Nix 的惰性求值思路一致</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0014-foldable-and-monoid.html">0014 - Foldable 与 Monoid</a><br>
+  <strong>下一课：</strong><a href="0016-project-structure.html">0016 - 项目结构与构建</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

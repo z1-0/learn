@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第六课：元组与代数数据类型</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第六课：元组与代数数据类型</h1>
+<div class="lesson-meta">
+  课程编号: 0006 | 前置知识: 第三课（模式匹配）、第五课（高阶函数） | 预计时间: 30-35 分钟
+</div>
+
+<p>至此你已经见过 Haskell 的基本类型（Int、Bool、Char）和列表。列表要求所有元素类型相同。但如果你想组合不同类型的值，或者定义自己的类型呢？这就是本节课的内容。</p>
+
+<h2>1. 元组 (Tuple)</h2>
+
+<p>元组是固定大小、元素类型可以不同的复合类型。用括号和逗号创建：</p>
+
+<pre><code>Prelude> (1, "hello")
+(1,"hello")
+Prelude> (True, 3.14, 'a')
+(True,3.14,'a')</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：元组 vs 列表</div>
+  <table class="type-table">
+    <tr><th></th><th>列表</th><th>元组</th></tr>
+    <tr><td>大小</td><td>可变</td><td>固定</td></tr>
+    <tr><td>元素类型</td><td>必须相同</td><td>可以不同</td></tr>
+    <tr><td>语法</td><td><span class="inline-code">[1,2,3]</span></td><td><span class="inline-code">(1,"a")</span></td></tr>
+  </table>
+</div>
+
+<pre><code>-- 元组的类型编码了大小和元素类型
+Prelude> :t (1, "hello")
+(1, "hello") :: (Num a, Num b) => (a, [Char])
+
+Prelude> :t (True, 3.14)
+(True, 3.14) :: (Bool, Double)</code></pre>
+
+<h3>元组操作</h3>
+
+<pre><code>-- 二元组：fst / snd（只适用于二元组！）
+Prelude> fst (1, "hello")
+1
+Prelude> snd (1, "hello")
+"hello"
+
+-- 模式匹配提取
+Prelude> let (x, y) = (10, 20) in x + y
+30
+
+-- 从列表创建元组
+Prelude> zip [1,2,3] ["a","b","c"]
+[(1,"a"),(2,"b"),(3,"c")]</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Kotlin</div>
+    <code>Pair(1, "hello")<br>Triple(1, 2, 3)</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>(1, "hello")<br>(1, 2, 3)</code>
+  </div>
+</div>
+
+<h2>2. 代数数据类型</h2>
+
+<p>Haskell 用 <span class="inline-code">data</span> 关键字定义新类型。代数数据类型 (ADT) 由两种基本构造组合而成：</p>
+
+<div class="concept">
+  <div class="concept-title">Product Type（积类型）</div>
+  <p>"且"关系：类型 A 和 B 的积 = <strong>同时有 A 和 B</strong>。</p>
+  <pre><code>-- 一个 Point 包含一个 Double 且 另一个 Double
+data Point = Point Double Double
+
+Prelude> :t Point 3.0 4.0
+Point 3.0 4.0 :: Point</code></pre>
+</div>
+
+<div class="concept">
+  <div class="concept-title">Sum Type（和类型）</div>
+  <p>"或"关系：类型 A 和 B 的和 = <strong>要么是 A，要么是 B</strong>。</p>
+  <pre><code>-- 一个 Bool 要么是 True 要么是 False
+data Bool = False | True  -- 内置定义
+
+-- 自定义：一个 Shape 可以是 Circle 或 Rect
+data Shape = Circle Double | Rect Double Double</code></pre>
+</div>
+
+<h2>3. 定义自己的 ADT</h2>
+
+<pre><code>-- 产品类型：一个 Person 同时有 name 和 age
+data Person = Person String Int
+
+-- Sum 类型：一个 Status 要么是 Active、Inactive，要么是 Banned
+data Status = Active | Inactive | Banned
+
+-- 组合：构造函数可以"携带"积类型
+data User = User String Status Int
+--          name    status  age</code></pre>
+
+<h3>模式匹配 ADT</h3>
+
+<pre><code>greet :: User -> String
+greet (User name Active _) = name ++ " is active"
+greet (User name Inactive _) = name ++ " is inactive"
+greet (User name Banned _) = name ++ " is banned"
+
+Prelude> greet (User "Alice" Active 25)
+"Alice is active"</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Kotlin sealed class</div>
+    <code>sealed class Status {
+  object Active : Status()
+  object Inactive : Status()
+  object Banned : Status()
+}
+
+data class User(
+  val name: String,
+  val status: Status,
+  val age: Int
+)</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>data Status = Active | Inactive | Banned
+data User = User String Status Int</code>
+  </div>
+</div>
+
+<h2>4. Record 语法（具名字段）</h2>
+
+<p>用 <span class="inline-code">data</span> 的位置参数不直观。Record 语法给字段命名：</p>
+
+<pre><code>data Person = Person {
+  name :: String,
+  age  :: Int,
+  email :: String
+} deriving (Show)
+
+-- 构造
+Prelude> Person "Alice" 30 "alice@example.com"
+Person {name = "Alice", age = 30, email = "alice@example.com"}
+
+-- 访问字段（自动生成函数）
+Prelude> name alice
+"Alice"
+Prelude> age alice
+30
+
+-- 更新（返回新值，原值不变）
+Prelude> alice { age = 31 }
+Person {name = "Alice", age = 31, email = "alice@example.com"}</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：Record 更新 = 不可变复制</div>
+  <p><span class="inline-code">alice { age = 31 }</span> 不修改 <span class="inline-code">alice</span>，而是返回一个<strong>新</strong>的 Person，只改动了 age。</p>
+  <p>对比 Kotlin：<span class="inline-code">alice.copy(age = 31)</span></p>
+  <p>对比 Nix：<span class="inline-code">alice // { age = 31 }</span></p>
+</div>
+
+<h2>5. 经典例子：Maybe 和 Either</h2>
+
+<p>Haskell 标准库中最重要的两个 ADT：</p>
+
+<pre><code>-- Maybe：可能有值，可能没有
+data Maybe a = Nothing | Just a
+
+safeDiv :: Double -> Double -> Maybe Double
+safeDiv _ 0 = Nothing
+safeDiv x y = Just (x / y)
+
+Prelude> safeDiv 10 2
+Just 5.0
+Prelude> safeDiv 10 0
+Nothing
+
+-- Either：成功或带错误的失败
+data Either a b = Left a | Right b
+
+divWithErr :: Double -> Double -> Either String Double
+divWithErr _ 0 = Left "Division by zero"
+divWithErr x y = Right (x / y)
+
+Prelude> divWithErr 10 2
+Right 5.0
+Prelude> divWithErr 10 0
+Left "Division by zero"</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Kotlin</div>
+    <code>T?  -- null safety</code>
+  </div>
+  <div>
+    <div class="comparison-label">TypeScript</div>
+    <code>T | undefined</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>Maybe T</code>
+  </div>
+</div>
+
+<h2>6. deriving（自动派生）</h2>
+
+<pre><code>data Color = Red | Green | Blue
+  deriving (Show, Eq, Ord, Enum)
+
+Prelude> show Red
+"Red"
+Prelude> Red == Red
+True
+Prelude> Red < Green
+True
+Prelude> [Red .. Blue]
+[Red,Green,Blue]</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：deriving = 自动实现</div>
+  <p><span class="inline-code">deriving (Show, Eq)</span> 让编译器自动为你的类型生成 <span class="inline-code">show</span>（打印）和 <span class="inline-code">==</span>（比较）的能力。</p>
+  <p>对比 Kotlin：<span class="inline-code">data class</span> 自动提供 <span class="inline-code">toString()</span>、<span class="inline-code">equals()</span>、<span class="inline-code">copy()</span>。</p>
+</div>
+
+<h2>7. 实用模式：用 ADT 建模领域</h2>
+
+<pre><code>-- 用 ADT 精确建模业务逻辑
+data PaymentMethod
+  = CreditCard { cardNumber :: String, expiry :: String }
+  | WeChatPay
+  | Alipay
+  | Cash
+
+data OrderStatus
+  = Pending
+  | Paid PaymentMethod
+  | Shipped { trackingNumber :: String }
+  | Delivered
+  | Cancelled { reason :: String }
+
+processOrder :: OrderStatus -> String
+processOrder Pending = "Waiting for payment"
+processOrder (Paid pmt) = "Paid via " ++ showPayment pmt
+processOrder (Shipped tn) = "Shipped, tracking: " ++ tn
+processOrder Delivered = "Done"
+processOrder (Cancelled r) = "Cancelled: " ++ r</code></pre>
+
+<div class="concept">
+  <div class="concept-title">核心洞见：让非法状态不可表示</div>
+  <p>当你用 ADT 建模时，编译器保证你只能处理合法组合。比如你不能给 "已取消" 的订单发货——类型系统会阻止你。</p>
+  <p>这比你在 Java/Kotlin 中用 <span class="inline-code">enum + 字段</span> 要安全得多，因为有些组合在运行时才有意义。</p>
+</div>
+
+<h2>练习</h2>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>定义一个 <span class="inline-code">data Shape</span>，包含 <span class="inline-code">Circle Double</span>（半径）和 <span class="inline-code">Rect Double Double</span>（长/宽）。写一个函数 <span class="inline-code">area</span> 计算面积。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>用 Record 语法定义一个 <span class="inline-code">Book</span> 类型（title, author, year, isbn）。创建一个值，然后修改 year。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>定义一个 <span class="inline-code">Temperature</span> 类型，可以是 <span class="inline-code">Celsius Double</span> 或 <span class="inline-code">Fahrenheit Double</span>。写一个 <span class="inline-code">toCelsius</span> 函数转换。</p>
+  <p>公式：<span class="inline-code">c = (f - 32) * 5 / 9</span></p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 4</div>
+  <p>写一个函数 <span class="inline-code">divide :: Int -> Int -> Maybe Int</span>，当除数为 0 时返回 <span class="inline-code">Nothing</span>，否则返回 <span class="inline-code">Just (x `div` y)</span>。</p>
+</div>
+
+<h2>小结</h2>
+
+<p>你已经学会了：</p>
+<ul>
+  <li>元组：固定大小的异构集合</li>
+  <li>Product Type（积类型）："且"关系</li>
+  <li>Sum Type（和类型）："或"关系</li>
+  <li><span class="inline-code">data</span> 关键字定义新类型</li>
+  <li>Record 语法：具名字段 + 自动生成访问器</li>
+  <li><span class="inline-code">Maybe</span> 和 <span class="inline-code">Either</span>：标准库的 ADT</li>
+  <li><span class="inline-code">deriving</span>：自动派生类型类实例</li>
+</ul>
+
+<div class="concept">
+  <div class="concept-title">关键思维转变</div>
+  <p>ADT 是 Haskell 建模世界的核心工具。当你用 "或 + 且" 组合类型时，编译器就是你的最强代码审查员——非法状态会被编译拒绝。</p>
+  <p>对比 Kotlin：<span class="inline-code">sealed class + data class</span> 就是 Kotlin 版的 ADT，Haskell 更简洁的统一语法。</p>
+</div>
+
+<h2>推荐阅读</h2>
+
+<ul>
+  <li><a href="https://learnyouahaskell.github.io/types-and-typeclasses.html">Learn You a Haskell: Types and Typeclasses (ADT 部分)</a></li>
+  <li><a href="https://learnyouahaskell.github.io/making-our-own-types-and-typeclasses.html">Learn You a Haskell: Making Our Own Types and Typeclasses</a></li>
+  <li><a href="http://dev.stephendiehl.com/hask/#algebraic-data-types">What I Wish I Knew: Algebraic Data Types</a></li>
+</ul>
+
+<div class="concept">
+  <div class="concept-title">有疑问？</div>
+  <p>ADT 是 Haskell 的核心设计模式，花时间理解它非常值得。随时问我！</p>
+</div>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0005-higher-order-functions.html">0005 - 高阶函数</a><br>
+  <strong>下一课：</strong><a href="0007-type-classes.html">0007 - 类型类基础</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

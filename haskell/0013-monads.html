@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第十三课：单子 Monad</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第十三课：单子 Monad</h1>
+<div class="lesson-meta">
+  课程编号: 0013 | 前置知识: 第十一课（Functor）、第十二课（Applicative） | 预计时间: 40-45 分钟
+</div>
+
+<p>Monad 是 Haskell 中最著名的概念。它代表了"可以链式组合的计算"。如果你已经理解了 Functor 和 Applicative，Monad 只是向前一小步。</p>
+
+<h2>1. 从 Applicative 到 Monad</h2>
+
+<pre><code>-- Applicative：并行组合
+(+) <$> Just 3 <*> Just 5   -- Just 8
+-- 两个计算是独立的
+
+-- Monad：依赖组合
+-- 第二个计算可以依赖第一个计算的结果
+-- 这就是 do 记法的本质！</code></pre>
+
+<h2>2. Monad 定义</h2>
+
+<pre><code>class Applicative m => Monad m where
+  (>>=)  :: m a -> (a -> m b) -> m b   -- bind
+  return :: a -> m a                     -- 同 pure
+
+-- (>>=) 读作"bind"
+-- m a        ：前一个计算
+-- (a -> m b) ：根据前一个结果产生新计算的函数</code></pre>
+
+<h2>3. Maybe 的 Monad 实例</h2>
+
+<pre><code>instance Monad Maybe where
+  Nothing >>= _ = Nothing
+  Just x  >>= f = f x
+
+  return = Just
+
+-- 链式调用 Maybe 计算
+safeSqrt :: Double -> Maybe Double
+safeSqrt x
+  | x < 0     = Nothing
+  | otherwise = Just (sqrt x)
+
+safeRecip :: Double -> Maybe Double
+safeRecip 0 = Nothing
+safeRecip x = Just (1 / x)
+
+-- 用 >>= 组合
+result :: Maybe Double
+result = safeRecip 4 >>= safeSqrt
+-- Just 0.5
+
+-- 用 do 记法（更清晰）
+result' :: Maybe Double
+result' = do
+  x <- safeRecip 4
+  y <- safeSqrt x
+  return y</code></pre>
+
+<h2>4. List 的 Monad 实例</h2>
+
+<pre><code>instance Monad [] where
+  xs >>= f = concatMap f xs
+  return x = [x]
+
+-- 列表推导就是 do 记法的语法糖
+-- [x * 2 | x <- [1,2,3], x > 1]
+
+-- 等价于 do
+listResult = do
+  x <- [1,2,3]
+  guard (x > 1)
+  return (x * 2)
+
+-- 嵌套循环
+pairs = do
+  x <- [1,2]
+  y <- ['a','b']
+  return (x, y)
+-- [(1,'a'),(1,'b'),(2,'a'),(2,'b')]</code></pre>
+
+<h2>5. IO 的 Monad 实例</h2>
+
+<pre><code>-- 你已经用过 IO Monad 了！（do 记法）
+main :: IO ()
+main = do
+  putStrLn "Enter a number:"
+  input <- getLine              -- IO String
+  let num = read input :: Int   -- 纯计算
+  putStrLn (show (num * 2))
+
+-- 用 >>= 重写
+main' :: IO ()
+main' =
+  putStrLn "Enter a number:" >>
+  getLine >>= \input ->
+  let num = read input :: Int
+  in putStrLn (show (num * 2))</code></pre>
+
+<h2>6. do 记法 vs >>=</h2>
+
+<pre><code>-- do 记法
+do
+  x <- action1
+  y <- action2 x
+  z <- action3 y
+  return (z + 1)
+
+-- >>= 等价形式
+action1 >>= \x ->
+  action2 x >>= \y ->
+    action3 y >>= \z ->
+      return (z + 1)
+
+-- do 记法只是 >>= 的语法糖！</code></pre>
+
+<h2>7. Monad 法则</h2>
+
+<pre><code>-- 左单位元
+return x >>= f  =  f x
+
+-- 右单位元
+m >>= return    =  m
+
+-- 结合律
+(m >>= f) >>= g  =  m >>= (\x -> f x >>= g)</code></pre>
+
+<div class="concept">
+  <div class="concept-title">核心洞察：Monad 是什么？</div>
+  <p>Monad 是一个<b>抽象计算类型类</b>，它让你能：</p>
+  <ol>
+    <li>将值包装到上下文中（<span class="inline-code">return</span> / <span class="inline-code">pure</span>）</li>
+    <li>将计算按顺序组合（<span class="inline-code">>>=</span> 或 <span class="inline-code">do</span>）</li>
+    <li>后续计算可以依赖前面的结果</li>
+  </ol>
+  <p>对比 Kotlin：<span class="inline-code">flatMap</span> 在协程和集合中做的事类似 <span class="inline-code">>>=</span>。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>用 <span class="inline-code">>>=</span> 重写以下 do 记法：</p>
+  <pre><code>do
+  x <- Just 10
+  y <- Just 20
+  return (x + y)</code></pre>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>写一个函数 <span class="inline-code">validateAge :: Int -> Either String Int</span>，年龄在 0-150 之间返回 <span class="inline-code">Right</span>，否则返回 <span class="inline-code">Left</span>。然后用 <span class="inline-code">>>=</span> 组合两个验证。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>用 do 记法实现：读取两个数字，求它们的平方和。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li>Monad = Applicative + <span class="inline-code">>>=</span>（bind）</li>
+  <li><span class="inline-code">>>=</span> 按顺序组合计算</li>
+  <li>do 记法是 <span class="inline-code">>>=</span> 的语法糖</li>
+  <li>Maybe、List、IO 都是 Monad</li>
+  <li>Monad 让你在纯语言中模拟有顺序的计算</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0012-applicatives.html">0012 - 应用函子 Applicative</a><br>
+  <strong>下一课：</strong><a href="0014-foldable-and-monoid.html">0014 - Foldable 与 Monoid</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

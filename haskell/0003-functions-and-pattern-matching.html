@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第三课：函数定义与模式匹配</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第三课：函数定义与模式匹配</h1>
+<div class="lesson-meta">
+  课程编号: 0003 | 前置知识: 第一课、第二课 | 预计时间: 35-40 分钟
+</div>
+
+<p>函数是 Haskell 的核心。这节课你将学会如何定义函数，以及 Haskell 最强大的特性之一——模式匹配。</p>
+
+<h2>1. 函数定义基础</h2>
+
+<pre><code>-- 最简单的函数
+double :: Int -> Int
+double x = x * 2
+
+-- 多参数函数（柯里化）
+add :: Int -> Int -> Int
+add x y = x + y
+
+-- 不需要参数
+greet :: String -> String
+greet name = "Hello, " ++ name ++ "!"</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Nix</div>
+    <code>double = x: x * 2;<br>add = x: y: x + y;</code>
+  </div>
+  <div>
+    <div class="comparison-label">Lisp</div>
+    <code>(defun double (x) (* x 2))<br>(defun add (x y) (+ x y))</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>double x = x * 2<br>add x y = x + y</code>
+  </div>
+</div>
+
+<div class="concept">
+  <div class="concept-title">概念：柯里化</div>
+  <p>Haskell 函数默认只接受一个参数。<span class="inline-code">add x y</span> 实际上是 <span class="inline-code">add x</span> 返回一个函数，这个函数再接受 <span class="inline-code">y</span>。</p>
+  <p>这和 Nix 的 <span class="inline-code">x: y: x + y</span> 完全一样！</p>
+</div>
+
+<h2>2. 模式匹配</h2>
+
+<p>模式匹配让你根据输入的结构选择不同的处理方式：</p>
+
+<pre><code>-- 匹配具体值
+isZero :: Int -> Bool
+isZero 0 = True
+isZero _ = False
+
+-- 匹配列表结构
+head' :: [a] -> a
+head' (x:_) = x
+head' []    = error "empty list"</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Kotlin</div>
+    <code>when (x) {<br>  0 -> true<br>  else -> false<br>}</code>
+  </div>
+  <div>
+    <div class="comparison-label">Nix</div>
+    <code>if x == 0 then true else false</code>
+  </div>
+  <div>
+    <div class="comparison-label">Lisp</div>
+    <code>(cond ((= x 0) t)<br>      (t nil))</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>isZero 0 = True<br>isZero _ = False</code>
+  </div>
+</div>
+
+<div class="concept">
+  <div class="concept-title">概念：通配符 _</div>
+  <p><span class="inline-code">_</span> 匹配任何值但不绑定变量。类似 Kotlin 的 <span class="inline-code">else</span>，Nix 的 <span class="inline-code">_</span>（在模式匹配中），Lisp 的 <span class="inline-code">t</span>。</p>
+</div>
+
+<h2>3. 递归与模式匹配</h2>
+
+<p>递归是 Haskell 处理循环的方式：</p>
+
+<pre><code>-- 计算阶乘
+factorial :: Integer -> Integer
+factorial 0 = 1
+factorial n = n * factorial (n - 1)
+
+-- 计算列表长度
+length' :: [a] -> Int
+length' []     = 0
+length' (_:xs) = 1 + length' xs
+
+-- 求和
+sum' :: Num a => [a] -> a
+sum' []     = 0
+sum' (x:xs) = x + sum' xs</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：基本情形 vs 递归情形</div>
+  <p>每个递归函数需要：</p>
+  <ul>
+    <li><strong>基本情形</strong>：停止条件（如 <span class="inline-code">factorial 0 = 1</span>）</li>
+    <li><strong>递归情形</strong>：分解问题（如 <span class="inline-code">factorial n = n * factorial (n-1)</span>）</li>
+  </ul>
+  <p>对比 Nix：Nix 的递归函数写法类似，但用 <span class="inline-code">let...in</span>。</p>
+</div>
+
+<h2>4. Guard（守卫）</h2>
+
+<p>Guard 用竖线 <span class="inline-code">|</span> 根据条件选择分支：</p>
+
+<pre><code>-- 判断正负
+sign :: Int -> Int
+sign x
+  | x > 0    = 1
+  | x == 0   = 0
+  | otherwise = -1
+
+-- 取最大值
+maxOfTwo :: Ord a => a -> a -> a
+maxOfTwo x y
+  | x > y    = x
+  | otherwise = y
+
+-- 成绩等级
+grade :: Int -> String
+grade score
+  | score >= 90 = "A"
+  | score >= 80 = "B"
+  | score >= 70 = "C"
+  | score >= 60 = "D"
+  | otherwise   = "F"</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：otherwise</div>
+  <p><span class="inline-code">otherwise</span> 是 <span class="inline-code">True</span> 的别名，表示"其他情况"。类似 Kotlin 的 <span class="inline-code">else</span>。</p>
+</div>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Kotlin</div>
+    <code>fun grade(score: Int) = when {<br>  score >= 90 -> "A"<br>  score >= 80 -> "B"<br>  else -> "C"<br>}</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>grade score<br>  | score >= 90 = "A"<br>  | score >= 80 = "B"<br>  | otherwise = "C"</code>
+  </div>
+</div>
+
+<h2>5. case 表达式</h2>
+
+<p><span class="inline-code">case</span> 是内联的模式匹配：</p>
+
+<pre><code>-- 使用 case
+describe :: [a] -> String
+describe xs = case xs of
+  []  -> "empty list"
+  [x] -> "single element"
+  _   -> "multiple elements"
+
+-- 在其他表达式中使用
+safeHead :: [a] -> Maybe a
+safeHead xs = case xs of
+  (x:_) -> Just x
+  []    -> Nothing</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Kotlin</div>
+    <code>when (list.size) {<br>  0 -> "empty"<br>  1 -> "single"<br>  else -> "multiple"<br>}</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>case list of<br>  [] -> "empty"<br>  [_] -> "single"<br>  _ -> "multiple"</code>
+  </div>
+</div>
+
+<h2>6. Where 绑定</h2>
+
+<p>用 <span class="inline-code">where</span> 复用局部定义：</p>
+
+<pre><code>-- 计算圆的面积
+circleArea :: Double -> Double
+circleArea r = pi * r * r
+
+-- 使用 where 复用计算
+bmi :: Double -> Double -> String
+bmi weight height
+  | bmi < 18.5 = "偏瘦"
+  | bmi < 25.0 = "正常"
+  | bmi < 30.0 = "偏胖"
+  | otherwise  = "肥胖"
+  where bmi = weight / height ^ 2</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：where vs let</div>
+  <p><span class="inline-code">where</span> 在函数体后面定义局部变量。</p>
+  <p><span class="inline-code">let...in</span> 在表达式中定义局部变量。</p>
+  <pre><code>-- let 用法
+cylinderVolume r h =
+  let area = pi * r * r
+  in area * h</code></pre>
+</div>
+
+<h2>7. 组合函数</h2>
+
+<pre><code>-- 函数组合
+applyTwice :: (a -> a) -> a -> a
+applyTwice f x = f (f x)
+
+-- 使用
+Prelude> applyTwice (+3) 10
+16
+Prelude> applyTwice (*2) 5
+20
+Prelude> applyTwice ("Hello " ++) "World"
+"Hello Hello World"</code></pre>
+
+<div class="tip">
+  <strong>Nix 用户注意：</strong>Haskell 的函数组合和 Nix 的管道操作类似，但更强大——你可以组合任意函数。
+</div>
+
+<h2>练习</h2>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>写一个函数 <span class="inline-code">isEven</span>，判断一个数是否为偶数。</p>
+  <p>提示：使用 <span class="inline-code">mod</span> 或 <span class="inline-code">even</span></p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>写一个函数 <span class="inline-code">length'</span>，用模式匹配计算列表长度。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>用 <span class="inline-code">case</span> 表达式重写 <span class="inline-code">head'</span>。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 4</div>
+  <p>写一个函数 <span class="inline-code">factorial</span>，用 guard 实现（不用模式匹配）。</p>
+</div>
+
+<h2>小结</h2>
+
+<p>你已经学会了：</p>
+<ul>
+  <li>函数定义语法（<span class="inline-code">f x = ...</span>）</li>
+  <li>模式匹配（<span class="inline-code">case</span>、函数参数模式）</li>
+  <li>Guard（<span class="inline-code">|</span> 守卫条件）</li>
+  <li>Where 绑定（<span class="inline-code">where</span>）</li>
+  <li>递归思维</li>
+</ul>
+
+<div class="concept">
+  <div class="concept-title">关键要点</div>
+  <p>Haskell 用<strong>模式匹配</strong>替代了大多数 if-else 语句。这让代码更清晰、更安全。</p>
+  <p>对比 Nix：Nix 也有模式匹配，但 Haskell 的更强大——它可以匹配嵌套结构。</p>
+</div>
+
+<h2>推荐阅读</h2>
+
+<ul>
+  <li><a href="https://learnyouahaskell.github.io/syntax-in-functions.html">Learn You a Haskell: Syntax in Functions</a></li>
+  <li><a href="http://dev.stephendiehl.com/hask/#functions">What I Wish I Knew: Functions</a></li>
+</ul>
+
+<div class="concept">
+  <div class="concept-title">有疑问？</div>
+  <p>模式匹配是 Haskell 的核心技能。如果不清楚，随时问我！</p>
+</div>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0002-types-and-type-signatures.html">0002 - 类型与类型签名</a><br>
+  <strong>下一课：</strong><a href="0004-lists-and-recursion.html">0004 - 列表与递归</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

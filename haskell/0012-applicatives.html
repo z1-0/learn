@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第十二课：应用函子 Applicative</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第十二课：应用函子 Applicative</h1>
+<div class="lesson-meta">
+  课程编号: 0012 | 前置知识: 第十一课（Functor） | 预计时间: 35-40 分钟
+</div>
+
+<p>Applicative 是 Functor 的升级版。Functor 让你将普通函数应用到包装好的值上，而 Applicative 让你将包装好的函数应用到包装好的值上。</p>
+
+<h2>1. 问题：Functor 的局限</h2>
+
+<pre><code>-- Functor 只能处理单参数函数
+(*2) <$> Just 5    -- Just 10
+
+-- 多参数函数呢？
+(+) <$> Just 5     -- 结果是 Just (5+) :: Maybe (Int -> Int)
+-- 我们得到了一个包装在 Maybe 中的函数！
+-- 怎么把这个函数应用到另一个 Maybe 值上？</code></pre>
+
+<h2>2. Applicative 定义</h2>
+
+<pre><code>class Functor f => Applicative f where
+  pure  :: a -> f a           -- 将值放入默认上下文
+  (<*>) :: f (a -> b) -> f a -> f b  -- 应用包装的函数
+
+-- 解决上面的问题：
+(+) <$> Just 5 <*> Just 3     -- Just 8
+
+-- 拆解：
+-- 1. (+) <$> Just 5  => Just (5+)
+-- 2. Just (5+) <*> Just 3 => Just 8</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：<$> 和 <*></div>
+  <p><span class="inline-code">f <$> x <*> y <*> z</span> 模式：</p>
+  <p>将普通函数 <span class="inline-code">f</span> 应用到包装好的值 <span class="inline-code">x</span>、<span class="inline-code">y</span>、<span class="inline-code">z</span> 上。</p>
+  <p>就像"提升了"的普通函数调用：<span class="inline-code">f x y z</span>  →  <span class="inline-code">f <$> x <*> y <*> z</span></p>
+</div>
+
+<h2>3. Maybe 的 Applicative 实例</h2>
+
+<pre><code>instance Applicative Maybe where
+  pure = Just
+
+  Nothing <*> _ = Nothing
+  _ <*> Nothing = Nothing
+  Just f  <*> Just x = Just (f x)
+
+Prelude> pure 5 :: Maybe Int
+Just 5
+
+Prelude> (+) <$> Just 3 <*> Just 4
+Just 7
+
+Prelude> (+) <$> Just 3 <*> Nothing
+Nothing</code></pre>
+
+<h2>4. List 的 Applicative 实例</h2>
+
+<pre><code>instance Applicative [] where
+  pure x = [x]       -- 单元素列表
+  fs <*> xs = [f x | f <- fs, x <- xs]  -- 所有组合
+
+Prelude> (*) <$> [1,2] <*> [3,4]
+[3,4,6,8]
+-- 等价于 [(1*3),(1*4),(2*3),(2*4)]
+
+Prelude> [(+1), (*2)] <*> [1,2,3]
+[2,3,4,2,4,6]</code></pre>
+
+<h2>5. IO 的 Applicative 实例</h2>
+
+<pre><code>-- IO 是 Applicative！
+greet :: IO String
+greet = (++) <$> getLine <*> getLine
+
+-- 等价于：
+greet' :: IO String
+greet' = do
+  a <- getLine
+  b <- getLine
+  return (a ++ b)
+
+-- 实际使用
+main :: IO ()
+main = do
+  result <- (++) <$> getLine <*> getLine
+  putStrLn result</code></pre>
+
+<h2>6. Applicative 工具函数</h2>
+
+<pre><code>-- liftA2：将二元函数提升到 Applicative
+liftA2 :: (a -> b -> c) -> f a -> f b -> f c
+liftA2 f x y = f <$> x <*> y
+
+Prelude> liftA2 (+) (Just 3) (Just 4)
+Just 7
+
+-- sequenceA：翻转列表
+sequenceA :: (Applicative f) => [f a] -> f [a]
+Prelude> sequenceA [Just 1, Just 2, Just 3]
+Just [1,2,3]
+Prelude> sequenceA [Just 1, Nothing, Just 3]
+Nothing</code></pre>
+
+<h2>7. Applicative 法则</h2>
+
+<pre><code>-- 身份
+pure id <*> v = v
+
+-- 组合
+pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
+
+-- 同态
+pure f <*> pure x = pure (f x)
+
+-- 交换
+f <*> pure x = pure ($ x) <*> f</code></pre>
+
+<div class="tip">
+  <strong>实用理解：</strong>不需要记法则。核心模式就是 <span class="inline-code">f <$> x <*> y <*> z</span>。
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>用 Applicative 风格实现：将两个 <span class="inline-code">Maybe Int</span> 相加。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>用 Applicative 风格实现：从三个 <span class="inline-code">IO String</span> 读取输入，拼接成一个字符串。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>解释 <span class="inline-code">(+) <$> [1,2] <*> [10,20]</span> 的结果是什么，为什么。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li>Applicative = Functor + <span class="inline-code">pure</span> + <span class="inline-code"><*></span></li>
+  <li>模式：<span class="inline-code">f <$> x <*> y <*> z</span></li>
+  <li><span class="inline-code">pure</span> 将值放入默认上下文</li>
+  <li><span class="inline-code"><*></span> 应用包装好的函数</li>
+  <li>Maybe、List、IO 都是 Applicative</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0011-functors.html">0011 - 函子 Functor</a><br>
+  <strong>下一课：</strong><a href="0013-monads.html">0013 - 单子 Monad</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

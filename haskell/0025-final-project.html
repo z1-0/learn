@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第二十五课：实战项目</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第二十五课：实战项目</h1>
+<div class="lesson-meta">
+  课程编号: 0025 | 前置知识: 全部前面课程 | 预计时间: 45-60 分钟
+</div>
+
+<p>恭喜你来到最后一课！这节课综合运用前面学到的所有知识，从零开始构建一个完整的 Haskell 项目。</p>
+
+<h2>项目：命令行笔记工具</h2>
+
+<p>我们将构建一个 <code>note</code> CLI 工具，功能：</p>
+<ul>
+  <li>添加笔记（<code>note add "content"</code>）</li>
+  <li>列出笔记（<code>note list</code>）</li>
+  <li>删除笔记（<code>note delete <id></code>）</li>
+  <li>搜索笔记（<code>note search <keyword></code>）</li>
+</ul>
+
+<h2>1. 项目结构</h2>
+
+<pre><code>note-app/
+  app/
+    Main.hs          -- CLI 入口
+  src/
+    Note.hs          -- 数据模型
+    Store.hs         -- 存储逻辑
+    CLI.hs           -- 命令行解析
+  note-app.cabal
+  CHANGELOG.md</code></pre>
+
+<h2>2. 数据模型</h2>
+
+<pre><code>-- src/Note.hs
+module Note where
+
+import Data.Time (UTCTime, getCurrentTime)
+import Data.Text (Text)
+
+data Note = Note
+  { noteId      :: Int
+  , noteContent :: Text
+  , noteCreated :: UTCTime
+  } deriving (Show, Eq)
+
+newNote :: Int -> Text -> IO Note
+newNote id content = do
+  now <- getCurrentTime
+  return Note { noteId = id, noteContent = content, noteCreated = now }</code></pre>
+
+<h2>3. 存储层</h2>
+
+<pre><code>-- src/Store.hs
+module Store where
+
+import Note
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
+import Data.List (sortOn)
+import System.Directory (doesFileExist)
+
+-- 简单的文件存储（JSON 格式）
+storePath :: FilePath
+storePath = "notes.json"
+
+loadNotes :: IO [Note]
+loadNotes = do
+  exists <- doesFileExist storePath
+  if not exists
+    then return []
+    else do
+      content <- T.readFile storePath
+      case decodeNotes content of
+        Nothing  -> return []
+        Just ns -> return ns
+
+saveNotes :: [Note] -> IO ()
+saveNotes notes = do
+  let content = encodeNotes notes
+  T.writeFile storePath content
+
+addNote :: Text -> IO ()
+addNote content = do
+  notes <- loadNotes
+  let nextId = if null notes then 1 else maximum (map noteId notes) + 1
+  note <- newNote nextId content
+  saveNotes (note : notes)
+  putStrLn ("Added note #" ++ show nextId)
+
+listNotes :: IO ()
+listNotes = do
+  notes <- loadNotes
+  let sorted = sortOn (Down . noteId) notes
+  mapM_ printNote sorted
+  where
+    printNote n = putStrLn $
+      show (noteId n) ++ ": " ++ T.unpack (noteContent n)
+
+deleteNote :: Int -> IO ()
+deleteNote id = do
+  notes <- loadNotes
+  let filtered = filter (\n -> noteId n /= id) notes
+  if length filtered == length notes
+    then putStrLn ("Note #" ++ show id ++ " not found")
+    else do
+      saveNotes filtered
+      putStrLn ("Deleted note #" ++ show id)
+
+searchNotes :: Text -> IO ()
+searchNotes keyword = do
+  notes <- loadNotes
+  let matches = filter (\n -> keyword `T.isInfixOf` noteContent n) notes
+  if null matches
+    then putStrLn "No matching notes found"
+    else mapM_ (\n -> putStrLn $ show (noteId n) ++ ": " ++ T.unpack (noteContent n)) matches</code></pre>
+
+<h2>4. CLI 解析</h2>
+
+<pre><code>-- src/CLI.hs
+module CLI where
+
+import Data.Text (Text)
+import qualified Data.Text as T
+
+data Command
+  = Add Text
+  | List
+  | Delete Int
+  | Search Text
+  | Help
+
+parseArgs :: [String] -> Command
+parseArgs ["add", content] = Add (T.pack content)
+parseArgs ["list"]         = List
+parseArgs ["delete", idStr] =
+  case reads idStr of
+    [(id, _)] -> Delete id
+    _         -> Help
+parseArgs ["search", kw]   = Search (T.pack kw)
+parseArgs _                = Help
+
+showHelp :: String
+showHelp = unlines
+  [ "Note - Simple note-taking CLI"
+  , ""
+  , "Usage:"
+  , "  note add <content>    Add a new note"
+  , "  note list             List all notes"
+  , "  note delete <id>      Delete a note"
+  , "  note search <keyword> Search notes"
+  ]</code></pre>
+
+<h2>5. 入口文件</h2>
+
+<pre><code>-- app/Main.hs
+module Main where
+
+import CLI
+import Store
+import System.Environment (getArgs)
+
+main :: IO ()
+main = do
+  args <- getArgs
+  case parseArgs args of
+    Help        -> putStrLn showHelp
+    Add content -> addNote content
+    List        -> listNotes
+    Delete id   -> deleteNote id
+    Search kw   -> searchNotes kw</code></pre>
+
+<h2>6. Cabal 配置</h2>
+
+<pre><code>cabal-version:      3.0
+name:               note
+version:            0.1.0.0
+
+executable note
+  main-is:          Main.hs
+  hs-source-dirs:   app
+  build-depends:    base ^>=4.18
+                  , text ^>=2.0
+                  , time
+                  , directory
+  default-language: Haskell2010
+
+library
+  exposed-modules:  Note, Store, CLI
+  hs-source-dirs:   src
+  build-depends:    base ^>=4.18
+                  , text ^>=2.0
+                  , time
+                  , directory
+  default-language: Haskell2010</code></pre>
+
+<h2>7. 扩展思路</h2>
+
+<p>这个项目可以继续扩展：</p>
+<ul>
+  <li>使用 <span class="inline-code">aeson</span> 进行 JSON 序列化（代替手动编解码）</li>
+  <li>添加 <span class="inline-code">megaparsec</span> 解析更复杂的命令</li>
+  <li>用 <span class="inline-code">sqlite-simple</span> 替换文件存储</li>
+  <li>添加颜色输出（<span class="inline-code">ansi-terminal</span>）</li>
+  <li>用 <span class="inline-code">optparse-applicative</span> 做更强大的 CLI 参数解析</li>
+  <li>用 <span class="inline-code">QuickCheck</span> 编写属性测试</li>
+</ul>
+
+<h2>课程总结</h2>
+
+<p>25 节课结束了！回顾一下你学到了什么：</p>
+
+<table class="type-table">
+  <tr><th>阶段</th><th>核心收获</th></tr>
+  <tr><td>基础入门（1-8）</td><td>GHCi、类型系统、函数、列表、高阶函数、ADT、类型类、模块</td></tr>
+  <tr><td>核心概念（9-15）</td><td>IO、Maybe/Either、Functor、Applicative、Monad、Foldable、惰性求值</td></tr>
+  <tr><td>实践编码（16-20）</td><td>项目构建、文件 IO、字符串处理、数据结构、测试</td></tr>
+  <tr><td>进阶提升（21-25）</td><td>Traversable、Monad Transformer、解析器、并发、实战项目</td></tr>
+</table>
+
+<div class="concept">
+  <div class="concept-title">你已经掌握了：</div>
+  <ul>
+    <li>✅ 读懂简单的 Haskell 代码</li>
+    <li>✅ 理解类型签名和类型推断</li>
+    <li>✅ 使用 GHCi 探索和调试</li>
+    <li>✅ 编写小型到中型 Haskell 程序</li>
+    <li>✅ 使用 Cabal 管理项目</li>
+    <li>✅ 理解 Monad 等核心概念</li>
+    <li>✅ 阅读 Hackage 文档</li>
+  </ul>
+</div>
+
+<h2>推荐继续学习的资源</h2>
+
+<ul>
+  <li><a href="https://learnyouahaskell.github.io/">Learn You a Haskell</a> — 从头到尾通读</li>
+  <li><a href="https://www.seas.upenn.edu/~cis194/spring13/">CIS 194</a> — 宾夕法尼亚大学课程，练习充实</li>
+  <li><a href="https://haskellbook.com/">Haskell Programming from First Principles</a> — 最全面的教材</li>
+  <li><a href="http://dev.stephendiehl.com/hask/">What I Wish I Knew</a> — 进阶参考</li>
+  <li><a href="https://www.haskell.org/documentation/">Haskell Documentation</a> — 官方文档</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0024-concurrency.html">0024 - 并发与并行</a><br>
+  <strong>首页：</strong><a href="../index.html">课程首页</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

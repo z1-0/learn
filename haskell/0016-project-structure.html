@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第十六课：项目结构与构建</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第十六课：项目结构与构建</h1>
+<div class="lesson-meta">
+  课程编号: 0016 | 前置知识: 第八课（模块系统） | 预计时间: 30-35 分钟
+</div>
+
+<p>现在你已经学会了 Haskell 语言本身，是时候创建一个真正的项目了。Haskell 有多个构建工具，Cabal 是最常用的之一。</p>
+
+<h2>1. 使用 Cabal 创建项目</h2>
+
+<pre><code># 创建新项目
+cabal init -n MyProject
+
+# 这会生成：
+# MyProject/
+#   app/
+#     Main.hs
+#   MyProject.cabal
+#   CHANGELOG.md
+
+# 构建
+cabal build
+
+# 运行
+cabal run
+
+# REPL（加载项目模块）
+cabal repl</code></pre>
+
+<h2>2. .cabal 文件结构</h2>
+
+<pre><code>cabal-version:      3.0
+name:               myproject
+version:            0.1.0.0
+
+-- 可执行程序
+executable myproject
+  main-is:          Main.hs
+  build-depends:    base ^>=4.18
+  hs-source-dirs:   app
+  default-language: Haskell2010
+
+-- 库模块
+library
+  exposed-modules:  MyLib
+  build-depends:    base ^>=4.18
+  hs-source-dirs:   src
+  default-language: Haskell2010</code></pre>
+
+<h2>3. 项目结构推荐</h2>
+
+<pre><code>my-project/
+  app/
+    Main.hs           -- 入口文件
+  src/
+    Lib.hs            -- 库代码
+    Utils/
+      String.hs       -- module Utils.String
+      File.hs         -- module Utils.File
+    Data/
+      Types.hs        -- module Data.Types
+  test/
+    Spec.hs           -- 测试入口
+    LibSpec.hs        -- 测试用例
+  my-project.cabal    -- 项目配置文件
+  CHANGELOG.md
+  README.md</code></pre>
+
+<h2>4. 依赖管理</h2>
+
+<pre><code>-- cabal 文件中声明依赖
+build-depends:
+    base >=4.14 && <5
+  , text ^>=2.0
+  , bytestring ^>=0.11
+  , containers ^>=0.6
+  , aeson ^>=2.1          -- JSON 处理
+
+-- 版本约束符
+-- >=4.14    : 版本 >= 4.14
+-- <5        : 版本 < 5
+-- ^>=2.0    : 版本 >= 2.0 且 < 2.1
+
+# 搜索包
+cabal search json
+
+# 更新包索引
+cabal update</code></pre>
+
+<h2>5. GHC 编译基础</h2>
+
+<pre><code># 直接编译（不通过 cabal）
+ghc -o myprogram Main.hs
+
+# 编译并优化
+ghc -O2 -o myprogram Main.hs
+
+# GHCi 中加载模块
+Prelude> :load Main.hs
+
+# 查看类型
+Prelude> :type map
+
+# 查看信息
+Prelude> :info Maybe</code></pre>
+
+<h2>6. Stack vs Cabal</h2>
+
+<table class="type-table">
+  <tr><th>特性</th><th>Cabal</th><th>Stack</th></tr>
+  <tr><td>包来源</td><td>Hackage</td><td>Stackage（精选包集）</td></tr>
+  <tr><td>GHC 管理</td><td>不管理（需 ghcup）</td><td>自动管理 GHC 版本</td></tr>
+  <tr><td>锁定文件</td><td>cabal.project.freeze</td><td>stack.yaml + stack.lock</td></tr>
+  <tr><td>新手友好</td><td>中等</td><td>更高</td></tr>
+</table>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>用 <span class="inline-code">cabal init -n HelloHaskell</span> 创建一个新项目，然后构建并运行。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>创建一个库模块 <span class="inline-code">MathUtils</span>，导出 <span class="inline-code">factorial</span> 函数，然后在 <span class="inline-code">Main.hs</span> 中使用。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>添加 <span class="inline-code">text</span> 包依赖，在程序中使用 <span class="inline-code">Data.Text</span> 的 <span class="inline-code">toUpper</span> 函数。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li><span class="inline-code">cabal init</span> 创建项目骨架</li>
+  <li><span class="inline-code">.cabal</span> 文件描述项目元数据和依赖</li>
+  <li>标准结构：<span class="inline-code">app/</span> + <span class="inline-code">src/</span> + <span class="inline-code">test/</span></li>
+  <li><span class="inline-code">cabal build</span> 构建，<span class="inline-code">cabal repl</span> 交互</li>
+  <li><span class="inline-code">build-depends</span> 管理外部依赖</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0015-lazy-evaluation.html">0015 - 惰性求值</a><br>
+  <strong>下一课：</strong><a href="0017-file-io.html">0017 - 文件 IO</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

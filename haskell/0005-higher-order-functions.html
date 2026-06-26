@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第五课：高阶函数</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第五课：高阶函数</h1>
+<div class="lesson-meta">
+  课程编号: 0005 | 前置知识: 第四课（列表与递归） | 预计时间: 35-40 分钟
+</div>
+
+<p>高阶函数是接受函数作为参数或返回函数的函数。这是函数式编程的核心武器。</p>
+
+<h2>1. 什么是高阶函数？</h2>
+
+<pre><code>-- 普通函数：接受值
+add :: Int -> Int -> Int
+add x y = x + y
+
+-- 高阶函数：接受函数
+applyTwice :: (a -> a) -> a -> a
+applyTwice f x = f (f x)
+
+Prelude> applyTwice (*2) 5
+20</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Lisp</div>
+    <code>(defun apply-twice (f x)<br>  (funcall f (funcall f x)))</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>applyTwice f x = f (f x)</code>
+  </div>
+</div>
+
+<h2>2. map</h2>
+
+<pre><code>-- map 的类型
+map :: (a -> b) -> [a] -> [b]
+
+-- 使用 map
+Prelude> map (*2) [1,2,3,4]
+[2,4,6,8]
+Prelude> map even [1,2,3,4]
+[False,True,False,True]
+Prelude> map ("Hello " ++) ["Alice","Bob"]
+["Hello Alice","Hello Bob"]</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">JS</div>
+    <code>[1,2,3].map(x => x * 2)</code>
+  </div>
+  <div>
+    <div class="comparison-label">Lisp</div>
+    <code>(mapcar (lambda (x) (* x 2)) '(1 2 3))</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>map (*2) [1,2,3]</code>
+  </div>
+</div>
+
+<h2>3. filter</h2>
+
+<pre><code>-- filter 的类型
+filter :: (a -> Bool) -> [a] -> [a]
+
+-- 使用 filter
+Prelude> filter even [1..10]
+[2,4,6,8,10]
+Prelude> filter (>5) [1..10]
+[6,7,8,9,10]
+Prelude> filter ('a' `elem`) ["apple","banana","cherry"]
+["banana"]</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">JS</div>
+    <code>[1..10].filter(x => x % 2 === 0)</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>filter even [1..10]</code>
+  </div>
+</div>
+
+<h2>4. fold（归约）</h2>
+
+<p><span class="inline-code">foldl</span> 从左到右，<span class="inline-code">foldr</span> 从右到左：</p>
+
+<pre><code>-- foldl 的类型
+foldl :: (b -> a -> b) -> b -> [a] -> b
+--       累加器  元素   初始值  列表   结果
+
+-- 用 foldl 求和
+Prelude> foldl (\acc x -> acc + x) 0 [1,2,3]
+6
+
+-- 更简洁
+Prelude> foldl (+) 0 [1,2,3]
+6
+
+-- foldr（从右）
+Prelude> foldr (+) 0 [1,2,3]
+6</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：foldl vs foldr</div>
+  <pre><code>-- foldl: 左结合
+foldl (+) 0 [1,2,3] = ((0 + 1) + 2) + 3
+
+-- foldr: 右结合
+foldr (+) 0 [1,2,3] = 1 + (2 + (3 + 0))</code></pre>
+  <p>对比 JS：<span class="inline-code">[1,2,3].reduce((a,x) => a + x, 0)</span></p>
+  <p>对比 Lisp：<span class="inline-code">(reduce #'+ '(1 2 3))</span></p>
+</div>
+
+<h2>5. 用 fold 实现一切</h2>
+
+<pre><code>-- 用 foldr 实现 map
+map' :: (a -> b) -> [a] -> [b]
+map' f = foldr (\x acc -> f x : acc) []
+
+-- 用 foldr 实现 filter
+filter' :: (a -> Bool) -> [a] -> [a]
+filter' p = foldr (\x acc -> if p x then x : acc else acc) []
+
+-- 用 foldl 实现 reverse
+reverse' :: [a] -> [a]
+reverse' = foldl (\acc x -> x : acc) []
+
+-- 用 foldl 实现 sum
+sum' :: Num a => [a] -> a
+sum' = foldl (+) 0</code></pre>
+
+<h2>6. Lambda 表达式</h2>
+
+<pre><code>-- 无名函数
+Prelude> map (\x -> x * 2 + 1) [1..5]
+[3,5,7,9,11]
+
+Prelude> filter (\x -> x > 3 && even x) [1..10]
+[4,6,8,10]
+
+-- 多参数 lambda
+Prelude> foldl (\acc x -> acc ++ [x * 2]) [] [1,2,3]
+[2,4,6]</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">JS</div>
+    <code>x => x * 2 + 1</code>
+  </div>
+  <div>
+    <div class="comparison-label">Lisp</div>
+    <code>(lambda (x) (+ (* x 2) 1))</code>
+  </div>
+  <div>
+    <div class="comparison-label">Nix</div>
+    <code>x: x * 2 + 1</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>\x -> x * 2 + 1</code>
+  </div>
+</div>
+
+<h2>7. 部分应用（柯里化）</h2>
+
+<pre><code>-- 所有函数默认柯里化
+add :: Int -> Int -> Int
+add x y = x + y
+
+-- 部分应用：只传部分参数
+add5 :: Int -> Int
+add5 = add 5
+
+Prelude> add5 3
+8
+
+-- 常见用法
+Prelude> map (add 10) [1,2,3]
+[11,12,13]
+Prelude> filter (>10) [5,12,3,15]
+[12,15]
+Prelude> map (++ "!!!") ["hi","bye"]
+["hi!!!","bye!!!"]</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：柯里化 = 偏函数自动</div>
+  <p><span class="inline-code">add 5</span> 返回一个函数 <span class="inline-code">(Int -> Int)</span>，因为 <span class="inline-code">add :: Int -> Int -> Int</span> 实际上是 <span class="inline-code">Int -> (Int -> Int)</span>。</p>
+  <p>对比 Nix：<span class="inline-code">add = x: y: x + y; add 5</span> 也返回一个函数。</p>
+</div>
+
+<h2>8. 函数组合 (.)</h2>
+
+<pre><code>-- 组合两个函数
+(.) :: (b -> c) -> (a -> b) -> a -> c
+-- f . g = \x -> f (g x)
+
+-- 不用组合
+Prelude> map (\x -> negate (abs x)) [5, -3, -8, 2]
+[-5,-3,-8,-2]
+
+-- 用组合
+Prelude> map (negate . abs) [5, -3, -8, 2]
+[-5,-3,-8,-2]
+
+-- pipe 风格
+Prelude> map (reverse . filter even . map (*2)) [[1,2],[3,4],[5,6]]
+[[4],[8],[12]]</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：组合 = pipe</div>
+  <p><span class="inline-code">f . g</span> 表示"先做 g，再做 f"。</p>
+  <p>类似 Nix 的 <span class="inline-code">builtins.pipe</span>，但更简洁。</p>
+</div>
+
+<h2>练习</h2>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>用 <span class="inline-code">map</span> 将字符串列表转大写。</p>
+  <p>提示：用 <span class="inline-code">Data.Char.toUpper</span></p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>用 <span class="inline-code">filter</span> 找出 1 到 50 中所有平方数。</p>
+  <p>提示：<span class="inline-code">floor (sqrt x)</span> 的平方等于 <span class="inline-code">x</span></p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>用 <span class="inline-code">foldl</span> 计算一个列表的最大值。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 4</div>
+  <p>用函数组合实现：先取偶数，再乘 2，再反转。</p>
+  <p>签名：<span class="inline-code">process :: [Int] -> [Int]</span></p>
+</div>
+
+<h2>小结</h2>
+
+<p>你已经学会了：</p>
+<ul>
+  <li><span class="inline-code">map</span> - 变换每个元素</li>
+  <li><span class="inline-code">filter</span> - 筛选元素</li>
+  <li><span class="inline-code">foldl</span> / <span class="inline-code">foldr</span> - 归约列表</li>
+  <li>Lambda（<span class="inline-code">\x -> ...</span>）</li>
+  <li>部分应用（柯里化）</li>
+  <li>函数组合（<span class="inline-code">.</span>）</li>
+</ul>
+
+<div class="concept">
+  <div class="concept-title">关键要点</div>
+  <p>高阶函数让你<strong>声明式地</strong>处理数据，而不是手写递归循环。</p>
+  <p>对比 JS：<span class="inline-code">arr.map(f).filter(g).reduce(h)</span> 和 Haskell 的 <span class="inline-code">foldr h (filter g (map f arr))</span> 是同一概念。</p>
+</div>
+
+<h2>推荐阅读</h2>
+
+<ul>
+  <li><a href="https://learnyouahaskell.github.io/higher-order-functions.html">Learn You a Haskell: Higher Order Functions</a></li>
+  <li><a href="http://dev.stephendiehl.com/hask/#higher-order-functions">What I Wish I Knew: Higher Order Functions</a></li>
+</ul>
+
+<div class="concept">
+  <div class="concept-title">有疑问？</div>
+  <p>高阶函数是函数式编程的威力所在。如果不清楚，随时问我！</p>
+</div>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0004-lists-and-recursion.html">0004 - 列表与递归</a><br>
+  <strong>下一课：</strong><a href="0006-tuples-and-algebraic-data-types.html">0006 - 元组与代数数据类型</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

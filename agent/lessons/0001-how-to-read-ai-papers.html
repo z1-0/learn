@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第一课：如何阅读一篇 AI 论文</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<!-- 课程头 -->
+<h1>如何阅读一篇 AI 论文</h1>
+<div class="lesson-meta">
+  <span>课时: 30 分钟</span>
+  <span>关联: <a href="../reference/glossary.html">术语表</a></span>
+</div>
+
+<!-- 动机 -->
+<h2>为什么这对你重要</h2>
+<p>AI 领域发展极快——新的架构、训练方法、Agent 框架层出不穷。教程和博客都建立在论文之上。学会读论文，你就能从<strong>第一手来源</strong>获取知识，而非二手解读。</p>
+
+<div class="callout">
+  <strong>与使命的关联：</strong>理解 Code Agent 论文（如 SWE-bench、ReAct、Tool Use）是你搭建基础设施的知识源头。读论文是打地基。
+</div>
+
+<!-- 主体内容 -->
+<h2>AI 论文的标准结构</h2>
+<p>绝大多数 AI 论文遵循<strong>一致的八段结构</strong>。每段回答一个特定问题：</p>
+
+<table style="width:100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem;">
+  <tr style="background: var(--accent-light);">
+    <th style="padding: 0.5rem; text-align: left; border: 1px solid var(--border);">段落</th>
+    <th style="padding: 0.5rem; text-align: left; border: 1px solid var(--border);">回答的问题</th>
+    <th style="padding: 0.5rem; text-align: left; border: 1px solid var(--border);">阅读策略</th>
+  </tr>
+  <tr>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);"><strong>Title + Abstract</strong></td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">这篇论文做了什么？</td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);"><strong>必读</strong>——决定是否继续</td>
+  </tr>
+  <tr>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);"><strong>Introduction</strong></td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">为什么要做这个？前人不够好在哪里？</td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);"><strong>必读</strong>——理解动机</td>
+  </tr>
+  <tr>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);"><strong>Related Work</strong></td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">前人做了什么？</td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">可跳过——除非你需要文献综述</td>
+  </tr>
+  <tr>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);"><strong>Method</strong></td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">具体怎么做的？</td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">核心——但第一次读可以跳过细节</td>
+  </tr>
+  <tr>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);"><strong>Experiments</strong></td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">效果如何？和谁比的？</td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">核心——看图表就够了</td>
+  </tr>
+  <tr>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);"><strong>Analysis</strong></td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">为什么有效？什么情况下不行？</td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">非常有价值——揭示深层理解</td>
+  </tr>
+  <tr>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);"><strong>Conclusion</strong></td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">总结 + 未来方向</td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">必读——验证你的理解</td>
+  </tr>
+  <tr>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);"><strong>Appendix</strong></td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">细节、超参、额外实验</td>
+    <td style="padding: 0.5rem; border: 1px solid var(--border);">需要时才读</td>
+  </tr>
+</table>
+
+<div class="sidenote">
+  注意：AI 论文通常将 Method + Experiments 分开或融合，但核心信息不变：<strong>做了什么 + 效果如何</strong>。
+</div>
+
+<h2>三遍阅读法 (Three-Pass Approach)</h2>
+<p>这是 S. Keshav 在 2007 年提出的经典策略，非常适合 AI 论文。每一遍有不同的目标：</p>
+
+<h3>第一遍（5-10 分钟）—— 筛选</h3>
+<p>目标是判断这篇论文是否值得细读：</p>
+<ul>
+  <li>读 <strong>Title、Abstract、Introduction</strong></li>
+  <li>扫一遍 <strong>图表</strong>（它们浓缩了核心结果）</li>
+  <li>看 <strong>Conclusion</strong></li>
+</ul>
+<p>完成后，你应该能回答三个问题：</p>
+<ol>
+  <li>这篇论文属于什么领域？（Code Agent？推理？检索？）</li>
+  <li>它解决了什么问题？</li>
+  <li>它的主要贡献是什么？</li>
+</ol>
+<p>如果和你无关，就停在这里。不需要每篇论文都读完。</p>
+
+<h3>第二遍（30-60 分钟）—— 理解</h3>
+<p>目标是理解核心内容：</p>
+<ul>
+  <li>读完整篇论文，但可以<strong>跳过晦涩的证明和实现细节</strong></li>
+  <li>仔细看每个<strong>图表及其标题</strong></li>
+  <li>在边缘做笔记、标出不懂的术语</li>
+</ul>
+
+<h3>第三遍（1-2 小时）—— 深入</h3>
+<p>目标是<strong>批判性理解</strong>：</p>
+<ul>
+  <li>尝试在脑中<strong>复现</strong>论文方法</li>
+  <li>思考：假设是否成立？实验是否有遗漏？</li>
+  <li>记录：这篇论文的局限在哪里？下一步是什么？</li>
+</ul>
+
+<div class="callout">
+  <strong>对初学者的建议：</strong>第一次只用<strong>第一遍</strong>读 3-5 篇论文，建立感觉后再追求深入理解。不要试图第一遍就全部搞懂。
+</div>
+
+<h2>初学者起步策略</h2>
+<p>作为零 AI 背景的读者，关键策略：<strong>先结构，后内容</strong>。</p>
+<ol>
+  <li><strong>先读术语表</strong>（<a href="../reference/glossary.html">我们的术语表</a>），建立基本词汇</li>
+  <li><strong>从奠基性论文开始</strong>——经典论文写得更好、被解读更多、更容易找到辅助资料</li>
+  <li><strong>配合博客/教程一起读</strong>——比如先看 3Blue1Brown 的视频解释，再读原论文</li>
+  <li><strong>前几遍只关注结构</strong>——不要求自己理解内容，只练习"定位信息"</li>
+</ol>
+
+<h2>实践练习</h2>
+<p>花 10 分钟，对一篇论文做<strong>第一遍扫读</strong>。选择以下之一：</p>
+
+<div class="callout">
+  <strong>论文 A（推荐）：</strong><a href="https://arxiv.org/abs/1706.03762" target="_blank">Attention Is All You Need</a> (Vaswani et al., 2017)
+  <br>— Transformer 架构的原始论文，现代 AI 的基石。你不需要理解内容，只练习定位信息。
+</div>
+<div class="callout">
+  <strong>论文 B（更短）：</strong><a href="https://www.cs.uni-potsdam.de/bs/teaching/docs/courses/ss2020/psm/reading.pdf" target="_blank">How to Read a Paper</a> (Keshav, 2007)
+  <br>— 就是我们这课参考的 2 页短文，练习识别论文结构。
+</div>
+
+<p><strong>练习步骤（只看结构，不管内容）：</strong></p>
+<ol>
+  <li>看 <strong>Title</strong>——论文主题是什么？用一句话概括</li>
+  <li>读 <strong>Abstract</strong>——找到这句话："这篇论文提出了______"</li>
+  <li>扫 <strong>Section 标题</strong>——论文分几部分？每部分在回答什么问题？</li>
+  <li>找到 <strong>核心图表</strong>——哪个图表展示了论文的主要方法/结果？</li>
+  <li>读 <strong>Conclusion</strong>——找到"limitations"（局限性）和"future work"（未来方向）</li>
+</ol>
+
+<details style="margin: 1rem 0; background: var(--code-bg); padding: 1rem; border-radius: 6px;">
+  <summary style="cursor: pointer; font-weight: 600;">练习说明</summary>
+  <p style="margin-top: 0.5rem;">这个练习的目标<strong>不是</strong>理解论文内容——你大概率看不懂 Attention Is All You Need 的技术细节，这完全正常。目标是练习<strong>定位信息</strong>的技能。就像学查字典——先学会怎么查，再学词的意思。</p>
+  <p>下一课将从这篇论文的核心概念讲起，帮你真正理解它。</p>
+</details>
+
+<h2>推荐资源</h2>
+<ul>
+  <li><strong>必读：</strong><a href="https://www.cs.uni-potsdam.de/bs/teaching/docs/courses/ss2020/psm/reading.pdf" target="_blank">How to Read a Paper</a> (S. Keshav, 2007) —— 三遍阅读法的原始论文，仅 2 页</li>
+  <li><strong>工具：</strong><a href="https://paperswithcode.com" target="_blank">Papers with Code</a> —— 可以看论文的代码实现和 SOTA 结果</li>
+  <li><strong>论文检索：</strong><a href="https://arxiv.org" target="_blank">arXiv</a> —— 所有 AI 论文的第一站</li>
+</ul>
+
+<h2>课后</h2>
+<p>如果你有任何疑问，或者想让我帮你理解某篇论文的某个部分——尽管问我。你也可以把你在练习中找到的答案发给我，我帮你验证理解。</p>
+
+<hr>
+<p style="font-size: 0.85rem; color: var(--text-secondary);"><strong>下一步推荐：</strong>在深入论文之前，先搭地基——第二课将讲解「大语言模型 (LLM) 的核心概念」：Token、训练、推理、参数。这是我们理解任何 AI 论文的前置知识。</p>
+
+</body>
+</html>

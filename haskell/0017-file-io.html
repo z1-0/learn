@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第十七课：文件 IO</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第十七课：文件 IO</h1>
+<div class="lesson-meta">
+  课程编号: 0017 | 前置知识: 第九课（IO 基础） | 预计时间: 35-40 分钟
+</div>
+
+<p>文件 IO 是大多数程序的基础需求。Haskell 提供了简单易用的文件操作函数，同时保持类型安全。</p>
+
+<h2>1. 基本文件操作</h2>
+
+<pre><code>import System.IO
+
+-- 读取整个文件
+readFile :: FilePath -> IO String
+-- 写入文件
+writeFile :: FilePath -> String -> IO ()
+-- 追加写入
+appendFile :: FilePath -> String -> IO ()
+
+main :: IO ()
+main = do
+  -- 读取文件
+  content <- readFile "input.txt"
+  putStrLn content
+
+  -- 写入文件
+  writeFile "output.txt" "Hello from Haskell!"
+
+  -- 追加
+  appendFile "log.txt" "New log entry\n"</code></pre>
+
+<h2>2. 逐行处理</h2>
+
+<pre><code>import System.IO
+
+-- 读取所有行
+readLines :: FilePath -> IO [String]
+readLines path = do
+  content <- readFile path
+  return (lines content)     -- lines: String -> [String]
+
+-- 逐行写入
+writeLines :: FilePath -> [String] -> IO ()
+writeLines path lines = writeFile path (unlines lines)
+
+-- 实用模式：读取 → 处理 → 写入
+processFile :: FilePath -> FilePath -> IO ()
+processFile input output = do
+  content <- readFile input
+  let processed = map toUpper content  -- 处理
+  writeFile output processed</code></pre>
+
+<h2>3. 使用 Handle</h2>
+
+<pre><code>import System.IO
+
+main :: IO ()
+main = do
+  -- 打开文件，获取 Handle
+  handle <- openFile "data.txt" ReadMode
+  content <- hGetContents handle
+  putStrLn content
+  hClose handle
+
+  -- 追加模式
+  logHandle <- openFile "log.txt" AppendMode
+  hPutStrLn logHandle "New entry"
+  hClose logHandle
+
+-- 常用的打开模式
+data IOMode = ReadMode | WriteMode | AppendMode | ReadWriteMode</code></pre>
+
+<h2>4. withFile：自动关闭</h2>
+
+<pre><code>import System.IO
+
+main :: IO ()
+main = withFile "data.txt" ReadMode $ \handle -> do
+  content <- hGetContents handle
+  putStrLn content
+-- withFile 自动关闭文件，即使发生异常
+
+-- 更简单的版本（推荐）
+main' :: IO ()
+main' = do
+  content <- readFile "data.txt"  -- 自动管理
+  putStrLn content</code></pre>
+
+<h2>5. 缓冲控制</h2>
+
+<pre><code>import System.IO
+
+main :: IO ()
+main = do
+  h <- openFile "large.txt" ReadMode
+  hSetBuffering h (BlockBuffering (Just 4096))
+  -- 或：hSetBuffering h LineBuffering
+  -- 或：hSetBuffering h NoBuffering
+  content <- hGetContents h
+  putStrLn (take 100 content)
+  hClose h
+
+-- Buffering 选项
+data BufferMode = NoBuffering
+                | LineBuffering
+                | BlockBuffering (Maybe Int)</code></pre>
+
+<h2>6. 异常处理</h2>
+
+<pre><code>import System.IO
+import Control.Exception (try, SomeException)
+
+main :: IO ()
+main = do
+  result <- try (readFile "nonexistent.txt") :: IO (Either SomeException String)
+  case result of
+    Left ex  -> putStrLn ("Error: " ++ show ex)
+    Right content -> putStrLn content
+
+-- 或者用 catch
+import Control.Exception (catch, IOException)
+
+safeReadFile :: FilePath -> IO String
+safeReadFile path = readFile path `catch` handler
+  where
+    handler :: IOException -> IO String
+    handler _ = return ""</code></pre>
+
+<h2>7. 实用例子：文件复制</h2>
+
+<pre><code>import System.IO
+
+copyFile :: FilePath -> FilePath -> IO ()
+copyFile src dest = do
+  content <- readFile src
+  writeFile dest content
+  putStrLn ("Copied " ++ src ++ " to " ++ dest)
+
+-- 逐行处理版本（适合大文件）
+copyFile' :: FilePath -> FilePath -> IO ()
+copyFile' src dest = do
+  handle <- openFile src ReadMode
+  content <- hGetContents handle
+  writeFile dest content
+  hClose handle</code></pre>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>写一个程序，读取一个文本文件，统计行数并打印。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>写一个程序，读取一个文件，将每行内容反转，输出到新文件。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>写一个 <span class="inline-code">wc</span> 风格的简单程序：统计文件的行数、单词数和字符数。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li><span class="inline-code">readFile</span> / <span class="inline-code">writeFile</span> 是最简单的文件操作</li>
+  <li><span class="inline-code">Handle</span> 提供更精细的控制</li>
+  <li><span class="inline-code">withFile</span> 自动管理资源</li>
+  <li><span class="inline-code">lines</span> / <span class="inline-code">unlines</span> 处理行分割</li>
+  <li>用 <span class="inline-code">try</span> 或 <span class="inline-code">catch</span> 处理 IO 错误</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0016-project-structure.html">0016 - 项目结构与构建</a><br>
+  <strong>下一课：</strong><a href="0018-string-processing.html">0018 - 字符串处理</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

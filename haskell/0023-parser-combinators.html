@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第二十三课：解析器组合子</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第二十三课：解析器组合子</h1>
+<div class="lesson-meta">
+  课程编号: 0023 | 前置知识: 第十三课（Monad）、第二十二课（Transformer） | 预计时间: 35-40 分钟
+</div>
+
+<p>解析器组合子是 Haskell 中最优雅的模式之一：用函数组合来构建解析器。主要库有 <span class="inline-code">megaparsec</span>、<span class="inline-code">attoparsec</span> 等。</p>
+
+<h2>1. 什么是解析器组合子？</h2>
+
+<pre><code>-- 一个解析器是：接受输入，返回解析结果和剩余输入
+-- type Parser a = String -> Maybe (a, String)
+
+-- 解析器组合子的思想：
+-- 小解析器 → 组合 → 大解析器
+
+-- 基本解析器
+char :: Char -> Parser Char
+string :: String -> Parser String
+anyChar :: Parser Char
+digit :: Parser Char
+
+-- 组合子
+(<|>) :: Parser a -> Parser a -> Parser a  -- 或
+many  :: Parser a -> Parser [a]             -- 零或多个
+some  :: Parser a -> Parser [a]             -- 一或多个</code></pre>
+
+<h2>2. 使用 Megaparsec</h2>
+
+<pre><code>import Text.Megaparsec
+import Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
+
+type Parser = Parsec Void String  -- Void = 无自定义错误
+
+-- 基本解析器
+parseInt :: Parser Int
+parseInt = L.decimal
+
+parseWord :: Parser String
+parseWord = some letterChar
+
+parseQuotedString :: Parser String
+parseQuotedString = do
+  char '"'
+  content <- many (noneOf ['"'])
+  char '"'
+  return content</code></pre>
+
+<h2>3. 组合解析器</h2>
+
+<pre><code>-- 解析逗号分隔值
+parseCsvLine :: Parser [String]
+parseCsvLine = parseCell `sepBy` char ','
+  where
+    parseCell = many (noneOf [',', '\n'])
+
+-- 解析键值对
+parseKeyValue :: Parser (String, String)
+parseKeyValue = do
+  key <- some letterChar
+  spaces
+  char '='
+  spaces
+  val <- many (noneOf ['\n'])
+  return (key, val)
+
+-- 组合
+parseConfig :: Parser [(String, String)]
+parseConfig = parseKeyValue `sepBy` eol
+
+-- 使用
+main :: IO ()
+main = do
+  content <- readFile "config.txt"
+  case parse parseConfig "" content of
+    Left err -> putStrLn (errorBundlePretty err)
+    Right kv -> print kv</code></pre>
+
+<h2>4. 错误处理</h2>
+
+<pre><code>-- Megaparsec 提供友好的错误信息
+import Text.Megaparsec
+
+-- 自定义错误
+parseEmail :: Parser String
+parseEmail = do
+  name <- some letterChar
+  char '@'
+  domain <- some letterChar
+  char '.'
+  tld <- some letterChar
+  return (name ++ "@" ++ domain ++ "." ++ tld)
+  <?> "email address"  -- 错误提示
+
+-- 尝试与回退
+try :: Parser a -> Parser a
+-- 如果解析失败，try 让输入回到开始位置
+
+parseIntOrWord :: Parser (Either Int String)
+parseIntOrWord =
+      Left  <$> try parseInt
+  <|> Right <$> parseWord</code></pre>
+
+<h2>5. 实际例子：JSON 解析器简化版</h2>
+
+<pre><code>import Text.Megaparsec
+import Text.Megaparsec.Char
+
+data JsonValue = JsonNull
+               | JsonBool Bool
+               | JsonNumber Double
+               | JsonString String
+               | JsonArray [JsonValue]
+               | JsonObject [(String, JsonValue)]
+  deriving (Show)
+
+type Parser = Parsec Void String
+
+parseJson :: Parser JsonValue
+parseJson = space *> parseValue <* space <* eof
+
+parseValue :: Parser JsonValue
+parseValue = choice
+  [ JsonNull   <$ string "null"
+  , JsonBool   <$> parseBool
+  , JsonNumber <$> parseNumber
+  , JsonString <$> parseString
+  , JsonArray  <$> parseArray
+  , JsonObject <$> parseObject
+  ]
+
+parseBool :: Parser Bool
+parseBool = True <$ string "true" <|> False <$ string "false"
+
+parseNumber :: Parser Double
+parseNumber = L.signed L.space L.float
+
+parseString :: Parser String
+parseString = between (char '"') (char '"') (many (noneOf ['"']))
+
+parseArray :: Parser [JsonValue]
+parseArray = between (char '[') (char ']') (parseValue `sepBy` char ',')
+
+parseObject :: Parser [(String, JsonValue)]
+parseObject = between (char '{') (char '}') (parsePair `sepBy` char ',')
+  where
+    parsePair = (,) <$> (parseString <* char ':') <*> parseValue</code></pre>
+
+<h2>6. Attoparsec（高性能版本）</h2>
+
+<pre><code>import Data.Attoparsec.Text
+import Data.Text
+
+-- Attoparsec 更快，但错误信息不如 Megaparsec
+-- 适合解析大量数据
+
+parseInts :: Parser [Int]
+parseInts = decimal `sepBy` skipSpace
+
+-- 增量解析（流式）
+parseStream :: Parser [Int]
+parseStream = many (decimal <* skipSpace)
+
+-- 用于网络协议、日志文件等</code></pre>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>写一个解析器，解析格式 "Name: Alice, Age: 28" 为 <span class="inline-code">(String, Int)</span>。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>用 Megaparsec 解析 CSV 文件：第一行是标题，后续行是数据。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>扩展上面的 JSON 解析器，支持转义字符（如 <span class="inline-code">\"</span> 和 <span class="inline-code">\\n</span>）。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li>解析器组合子：用小解析器组合成大解析器</li>
+  <li>Megaparsec：通用，错误信息好</li>
+  <li>Attoparsec：高性能，流式解析</li>
+  <li>核心组合子：<span class="inline-code"><|></span>、<span class="inline-code">many</span>、<span class="inline-code">sepBy</span></li>
+  <li>解析器在 Haskell 生态中广泛使用</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0022-monad-transformers.html">0022 - Monad Transformers</a><br>
+  <strong>下一课：</strong><a href="0024-concurrency.html">0024 - 并发与并行</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

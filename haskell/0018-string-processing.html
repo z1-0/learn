@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第十八课：字符串处理</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第十八课：字符串处理</h1>
+<div class="lesson-meta">
+  课程编号: 0018 | 前置知识: 第十七课（文件 IO） | 预计时间: 35-40 分钟
+</div>
+
+<p>Haskell 中有多种字符串类型，各有用途。标准 <span class="inline-code">String</span> 适合教学和简单场景，实际项目通常用 <span class="inline-code">Text</span> 和 <span class="inline-code">ByteString</span>。</p>
+
+<h2>1. String 类型</h2>
+
+<pre><code>-- String 就是 [Char]
+type String = [Char]
+
+"hello" :: String
+['h','e','l','l','o'] :: String
+
+-- 可以像列表一样操作
+Prelude> "hello" ++ " world"
+"hello world"
+Prelude> take 3 "hello"
+"hel"
+Prelude> reverse "hello"
+"olleh"
+Prelude> "hello" !! 1
+'e'
+
+-- 缺点：性能差（链表结构）
+-- 适合：小字符串、教学</code></pre>
+
+<h2>2. Text 类型</h2>
+
+<pre><code>import Data.Text (Text)
+import qualified Data.Text as T
+
+-- 创建 Text
+t1 :: Text
+t1 = T.pack "hello"           -- String → Text
+
+s1 :: String
+s1 = T.unpack t1              -- Text → String
+
+-- Text 操作
+Prelude> T.toUpper (T.pack "hello")
+"HELLO"
+Prelude> T.length (T.pack "hello")
+5
+Prelude> T.splitOn (T.pack ",") (T.pack "a,b,c")
+["a","b","c"]
+
+-- 性能：连续内存，O(1) 索引
+-- 适合：大多数文本处理任务</code></pre>
+
+<h2>3. ByteString 类型</h2>
+
+<pre><code>import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as C
+
+-- 创建 ByteString
+bs :: ByteString
+bs = BS.pack [65, 66, 67]     -- "ABC"
+
+bs' :: ByteString
+bs' = C.pack "hello"          -- Char8 版本
+
+-- ByteString 操作
+Prelude> BS.length bs
+3
+Prelude> C.map toUpper (C.pack "hello")
+"HELLO"
+
+-- 两种变体
+-- Data.ByteString          : 惰性，适合大文件
+-- Data.ByteString.Lazy     : 惰性分块，适合流式处理
+-- Data.ByteString.Char8    : Char 接口的包装
+
+-- 适合：二进制数据、高性能 IO、网络</code></pre>
+
+<h2>4. 类型选择指南</h2>
+
+<table class="type-table">
+  <tr><th>类型</th><th>性能</th><th>编码</th><th>适用场景</th></tr>
+  <tr><td><span class="inline-code">String</span></td><td>差</td><td>Unicode</td><td>简单脚本、教学</td></tr>
+  <tr><td><span class="inline-code">Text</span></td><td>好</td><td>Unicode</td><td>通用文本处理</td></tr>
+  <tr><td><span class="inline-code">ByteString</span></td><td>优秀</td><td>二进制/ASCII</td><td>网络、文件、JSON</td></tr>
+</table>
+
+<h2>5. 实际例子：文本分析工具</h2>
+
+<pre><code>import qualified Data.Text as T
+import qualified Data.Text.IO as T
+
+-- 统计单词频率
+wordFreq :: FilePath -> IO ()
+wordFreq path = do
+  content <- T.readFile path
+  let words = T.words content
+      freqs = foldr (\w -> Map.insertWith (+) w 1) Map.empty words
+  mapM_ print (Map.toList freqs)
+
+-- 替换文本
+replaceText :: FilePath -> Text -> Text -> IO ()
+replaceText path old new = do
+  content <- T.readFile path
+  T.writeFile path (T.replace old new content)</code></pre>
+
+<h2>6. OverloadedStrings 扩展</h2>
+
+<pre><code>{-# LANGUAGE OverloadedStrings #-}
+
+-- 启用后，字符串字面量可以是 Text、ByteString 等
+import Data.Text (Text)
+import Data.ByteString (ByteString)
+
+textVal :: Text
+textVal = "hello"         -- 不再是 String，而是 Text
+
+bsVal :: ByteString
+bsVal = "hello"           -- 也是 ByteString
+
+-- 需要加类型签名，不然 GHC 不知道是哪种
+-- 通常配合 TypeApplications 使用</code></pre>
+
+<h2>7. 字符串格式化</h2>
+
+<pre><code>-- 使用 printf（来自 Text.Printf）
+import Text.Printf
+
+main :: IO ()
+main = do
+  printf "Hello, %s!\n" "world"
+  printf "Value: %d, Pi: %.2f\n" 42 pi
+
+-- 或者用 show（最简单）
+showResult :: Show a => a -> String
+showResult x = "The result is: " ++ show x
+
+-- 使用 Text 的 concat
+import Data.Text (Text)
+import qualified Data.Text as T
+
+greet :: Text -> Text
+greet name = T.concat ["Hello, ", name, "!"]</code></pre>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>读取一个文件，用 <span class="inline-code">Text</span> 将内容转为大写，写出到新文件。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>写一个函数 <span class="inline-code">countChar :: Text -> Char -> Int</span>，统计某个字符在 Text 中出现的次数。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>读取 CSV 格式的用户数据（每行 "name,age"），用 <span class="inline-code">Text</span> 解析并打印每个用户。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li><span class="inline-code">String</span> 是 <span class="inline-code">[Char]</span>，性能差但简单</li>
+  <li><span class="inline-code">Text</span> 是推荐的标准字符串类型</li>
+  <li><span class="inline-code">ByteString</span> 处理二进制和大数据</li>
+  <li><span class="inline-code">OverloadedStrings</span> 扩展便于使用</li>
+  <li><span class="inline-code">Data.Text.IO</span> 提供读写文件函数</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0017-file-io.html">0017 - 文件 IO</a><br>
+  <strong>下一课：</strong><a href="0019-data-structures.html">0019 - 数据结构</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

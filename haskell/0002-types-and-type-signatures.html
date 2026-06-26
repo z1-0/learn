@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第二课：类型与类型签名</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第二课：类型与类型签名</h1>
+<div class="lesson-meta">
+  课程编号: 0002 | 前置知识: 第一课 | 预计时间: 30-35 分钟
+</div>
+
+<p>类型系统是 Haskell 最强大的特性之一。它能在编译时捕获大量错误，让你对代码更有信心。这节课你将学会阅读和编写类型签名。</p>
+
+<h2>1. Haskell 的基本类型</h2>
+
+<table class="type-table">
+  <tr><th>类型</th><th>说明</th><th>示例</th></tr>
+  <tr><td><span class="inline-code">Bool</span></td><td>布尔值</td><td><span class="inline-code">True</span>, <span class="inline-code">False</span></td></tr>
+  <tr><td><span class="inline-code">Char</span></td><td>单个字符</td><td><span class="inline-code">'a'</span>, <span class="inline-code">'Z'</span>, <span class="inline-code">'1'</span></td></tr>
+  <tr><td><span class="inline-code">Int</span></td><td>固定精度整数（64位）</td><td><span class="inline-code">42</span>, <span class="inline-code">-7</span></td></tr>
+  <tr><td><span class="inline-code">Integer</span></td><td>任意精度整数</td><td><span class="inline-code">2^100</span></td></tr>
+  <tr><td><span class="inline-code">Double</span></td><td>双精度浮点数</td><td><span class="inline-code">3.14</span></td></tr>
+  <tr><td><span class="inline-code">String</span></td><td>字符串</td><td><span class="inline-code">"hello"</span></td></tr>
+  <tr><td><span class="inline-code">()</span></td><td>单元类型（void）</td><td><span class="inline-code">()</span></td></tr>
+</table>
+
+<pre><code>Prelude> :t True
+True :: Bool
+Prelude> :t 'a'
+'a' :: Char
+Prelude> :t 42
+42 :: Num p => p
+Prelude> :t 3.14
+3.14 :: Fractional p => p
+Prelude> :t "hello"
+"hello" :: [Char]</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：字符串是字符列表</div>
+  <p>Haskell 中 <span class="inline-code">String</span> 就是 <span class="inline-code">[Char]</span>（字符的列表）。</p>
+  <p>对比 Nix：Nix 中字符串是基本类型，但在 Haskell 中它是语法糖。</p>
+</div>
+
+<h2>2. 类型签名</h2>
+
+<p>类型签名写在函数定义的上方，用 <span class="inline-code">::</span> 连接：</p>
+
+<pre><code>-- 类型签名（可选，但强烈推荐）
+add :: Int -> Int -> Int
+-- 函数定义
+add x y = x + y</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">TypeScript</div>
+    <code>function add(x: number, y: number): number</code>
+  </div>
+  <div>
+    <div class="comparison-label">Nix</div>
+    <code>add = x: y: x + y;</code>
+  </div>
+  <div>
+    <div class="comparison-label">Lisp</div>
+    <code>(defun add (x y) (+ x y))</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>add :: Int -> Int -> Int</code>
+  </div>
+</div>
+
+<div class="concept">
+  <div class="concept-title">概念：箭头 -> 表示函数</div>
+  <p><span class="inline-code">Int -> Int -> Int</span> 表示：接受两个 <span class="inline-code">Int</span>，返回一个 <span class="inline-code">Int</span>。</p>
+  <p>箭头从左到右：参数1 → 参数2 → 返回值。</p>
+</div>
+
+<h2>3. 类型推断</h2>
+
+<p>Haskell 可以自动推断类型，你不需要处处写类型签名：</p>
+
+<pre><code>-- 不写类型签名，Haskell 会推断
+add x y = x + y
+
+-- 用 :t 看推断结果
+Prelude> :t add
+add :: Num a => a -> a -> a</code></pre>
+
+<p>但<strong>推荐写类型签名</strong>，因为：</p>
+<ul>
+  <li>帮助你理解代码意图</li>
+  <li>编译器会检查你的实现是否匹配签名</li>
+  <li>文档化函数的接口</li>
+</ul>
+
+<div class="tip">
+  <strong>最佳实践：</strong>永远给函数写类型签名。这是 Haskell 社区的惯例。
+</div>
+
+<h2>4. 多态类型</h2>
+
+<p>类型变量用小写字母表示，表示"任意类型"：</p>
+
+<pre><code>-- identity 可以接受任意类型
+identity :: a -> a
+identity x = x
+
+-- 第一个元素
+head :: [a] -> a
+head (x:_) = x
+
+-- 比较两个值
+eq :: Eq a => a -> a -> Bool
+eq x y = x == y</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">TypeScript</div>
+    <code>function identity&lt;T&gt;(x: T): T</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>identity :: a -> a</code>
+  </div>
+</div>
+
+<div class="concept">
+  <div class="concept-title">概念：约束 =></div>
+  <p><span class="inline-code">Eq a => a -> a -> Bool</span> 中的 <span class="inline-code">Eq a =></span> 表示类型 <span class="inline-code">a</span> 必须支持相等比较。</p>
+  <p>这类似 TypeScript 的 <span class="inline-code">&lt;T extends Equatable&gt;</span>。</p>
+</div>
+
+<h2>5. 常见类型类</h2>
+
+<table class="type-table">
+  <tr><th>类型类</th><th>说明</th><th>实例</th></tr>
+  <tr><td><span class="inline-code">Eq</span></td><td>可比较相等</td><td>Bool, Int, String, Char</td></tr>
+  <tr><td><span class="inline-code">Ord</span></td><td>可排序</td><td>Bool, Int, Char, String</td></tr>
+  <tr><td><span class="inline-code">Show</span></td><td>可转为字符串</td><td>所有标准类型</td></tr>
+  <tr><td><span class="inline-code">Read</span></td><td>可从字符串解析</td><td>所有标准类型</td></tr>
+  <tr><td><span class="inline-code">Num</span></td><td>数值类型</td><td>Int, Integer, Double</td></tr>
+  <tr><td><span class="inline-code">Integral</span></td><td>整数类型</td><td>Int, Integer</td></tr>
+  <tr><td><span class="inline-code">Floating</span></td><td>浮点类型</td><td>Double, Float</td></tr>
+</table>
+
+<pre><code>Prelude> :t (==)
+(==) :: Eq a => a -> a -> Bool
+Prelude> :t (>)
+(>) :: Ord a => a -> a -> Bool
+Prelude> :t show
+show :: Show a => a -> String
+Prelude> :t (+)
+(+) :: Num a => a -> a -> a</code></pre>
+
+<h2>6. 类型 vs 类型类</h2>
+
+<div class="concept">
+  <div class="concept-title">重要区分</div>
+  <p><strong>类型</strong>（Type）：具体的值分类，如 <span class="inline-code">Int</span>、<span class="inline-code">Bool</span>、<span class="inline-code">String</span>。</p>
+  <p><strong>类型类</strong>（Type Class）：行为的接口，如 <span class="inline-code">Eq</span>、<span class="inline-code">Show</span>、<span class="inline-code">Num</span>。</p>
+  <p>对比 Java：类型 ≈ 类，类型类 ≈ 接口。</p>
+  <p>对比 Nix：Nix 没有类型类的概念（动态类型）。</p>
+</div>
+
+<h2>7. 函数类型</h2>
+
+<p>函数本身也有类型！</p>
+
+<pre><code>-- add 的类型
+Prelude> :t add
+add :: Num a => a -> a -> a
+
+-- map 的类型
+Prelude> :t map
+map :: (a -> b) -> [a] -> [b]
+
+-- filter 的类型
+Prelude> :t filter
+filter :: (a -> Bool) -> [a] -> [a]</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：函数作为参数</div>
+  <p><span class="inline-code">(a -> b)</span> 表示一个函数作为参数。括号是必须的。</p>
+  <p>对比 Lisp：<span class="inline-code">(mapcar f list)</span> 中 <span class="inline-code">f</span> 也是函数参数。</p>
+</div>
+
+<h2>8. 组合类型</h2>
+
+<pre><code>-- 列表类型
+Prelude> :t [1, 2, 3]
+[1, 2, 3] :: Num a => [a]
+
+-- Maybe 类型（可能有值，可能没有）
+Prelude> :t Just 42
+Just 42 :: Num a => Maybe a
+Prelude> :t Nothing
+Nothing :: Maybe a
+
+-- Either 类型（两种可能）
+Prelude> :t Left "error"
+Left "error" :: Either String b
+Prelude> :t Right 42
+Right 42 :: Num a => Either b a</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Kotlin</div>
+    <code>val x: Int? = null  // Maybe Int</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>Nothing :: Maybe Int</code>
+  </div>
+</div>
+
+<div class="tip">
+  <strong>Nix 用户注意：</strong>Haskell 的 <span class="inline-code">Maybe</span> 类似 Nix 的 <span class="inline-code">or</span> 机制，但更安全——编译器强制你处理 <span class="inline-code">Nothing</span> 的情况。
+</div>
+
+<h2>练习</h2>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>用 <span class="inline-code">:t</span> 查看以下函数的类型，尝试理解每个部分的含义：</p>
+  <ul>
+    <li><span class="inline-code">(++)</span></li>
+    <li><span class="inline-code">take</span></li>
+    <li><span class="inline-code">drop</span></li>
+    <li><span class="inline-code">zip</span></li>
+  </ul>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>为以下函数写类型签名：</p>
+  <pre><code>-- 返回两个整数中较大的那个
+maxOfTwo x y = if x > y then x else y</code></pre>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>解释以下类型签名的含义：</p>
+  <pre><code>map :: (a -> b) -> [a] -> [b]</code></pre>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 4</div>
+  <p>以下代码能编译吗？为什么？</p>
+  <pre><code>add :: Int -> Int -> Int
+add x y = x + y
+
+result = add "hello" 5</code></pre>
+</div>
+
+<h2>小结</h2>
+
+<p>你已经学会了：</p>
+<ul>
+  <li>Haskell 的基本类型（Bool, Char, Int, String 等）</li>
+  <li>类型签名语法（<span class="inline-code">::</span> 和 <span class="inline-code">-></span>）</li>
+  <li>类型推断（Haskell 自动推断类型）</li>
+  <li>多态类型（类型变量 <span class="inline-code">a</span>, <span class="inline-code">b</span>）</li>
+  <li>类型类（Eq, Show, Num 等）</li>
+  <li>类型 vs 类型类的区别</li>
+</ul>
+
+<div class="concept">
+  <div class="concept-title">关键要点</div>
+  <p>Haskell 的类型系统是你的朋友——它在编译时捕获错误，让你对代码更有信心。</p>
+  <p>与 Nix 的对比：Nix 是动态类型，类型错误在运行时才发现。Haskell 在编译时就告诉你。</p>
+</div>
+
+<h2>推荐阅读</h2>
+
+<ul>
+  <li><a href="https://learnyouahaskell.github.io/types-and-typeclasses.html">Learn You a Haskell: Types and Typeclasses</a></li>
+  <li><a href="http://dev.stephendiehl.com/hask/#type-system">What I Wish I Knew: Type System</a></li>
+</ul>
+
+<div class="concept">
+  <div class="concept-title">有疑问？</div>
+  <p>类型系统是 Haskell 的难点之一。如果 <span class="inline-code">=></span>、类型变量、类型类让你困惑，随时问我！</p>
+</div>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0001-first-steps-in-ghci.html">0001 - GHCi 入门</a><br>
+  <strong>下一课：</strong><a href="0003-functions-and-pattern-matching.html">0003 - 函数定义与模式匹配</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

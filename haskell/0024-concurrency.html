@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第二十四课：并发与并行</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第二十四课：并发与并行</h1>
+<div class="lesson-meta">
+  课程编号: 0024 | 前置知识: 第十三课（Monad）、第十七课（IO） | 预计时间: 35-40 分钟
+</div>
+
+<p>Haskell 提供了多种并发和并行机制：轻量级线程（forkIO）、软件事务内存（STM）、以及并行策略（Par）。</p>
+
+<h2>1. forkIO：轻量级线程</h2>
+
+<pre><code>import Control.Concurrent
+import Control.Concurrent.Chan
+
+-- forkIO 创建轻量级线程
+main :: IO ()
+main = do
+  putStrLn "Starting threads..."
+  forkIO $ do
+    threadDelay 1000000  -- 1 秒
+    putStrLn "Thread 1 done"
+  forkIO $ do
+    threadDelay 2000000
+    putStrLn "Thread 2 done"
+  threadDelay 3000000
+  putStrLn "Main done"
+
+-- MVar：线程间通信（一个槽位）
+main' :: IO ()
+main' = do
+  mvar <- newEmptyMVar
+  forkIO $ do
+    putMVar mvar "Hello from thread"
+  msg <- takeMVar mvar
+  putStrLn msg</code></pre>
+
+<h2>2. Channel：多对多通信</h2>
+
+<pre><code>import Control.Concurrent.Chan
+
+main :: IO ()
+main = do
+  chan <- newChan
+
+  -- 生产者
+  forkIO $ do
+    mapM_ (writeChan chan) [1..10]
+    putStrLn "Producer done"
+
+  -- 消费者
+  forkIO $ do
+    replicateM_ 10 $ do
+      msg <- readChan chan
+      putStrLn ("Got: " ++ show msg)
+
+  threadDelay 1000000</code></pre>
+
+<h2>3. STM：软件事务内存</h2>
+
+<pre><code>import Control.Concurrent.STM
+import Control.Concurrent.STM.TVar
+
+-- STM 类似数据库事务
+-- 原子性：要么全成功，要么全回滚
+-- 隔离性：事务之间互不干扰
+
+main :: IO ()
+main = do
+  counter <- newTVarIO 0
+
+  -- 多个线程同时修改
+  forkIO $ replicateM_ 1000 $
+    atomically $ modifyTVar' counter (+1)
+
+  forkIO $ replicateM_ 1000 $
+    atomically $ modifyTVar' counter (+1)
+
+  threadDelay 1000000
+
+  result <- readTVarIO counter
+  putStrLn ("Counter: " ++ show result)
+  -- 总是 2000！</code></pre>
+
+<div class="concept">
+  <div class="concept-title">概念：STM vs MVar</div>
+  <p>MVar：线程阻塞等待，容易死锁</p>
+  <p>STM：乐观并发，事务冲突时自动重试</p>
+  <p>推荐在复杂并发场景使用 STM</p>
+</div>
+
+<h2>4. 并发下载器</h2>
+
+<pre><code>import Control.Concurrent
+import Control.Concurrent.Async
+import Network.HTTP.Simple
+
+-- 最简单的并发方式：async
+main :: IO ()
+main = do
+  -- async 并发执行，返回 Async 句柄
+  a1 <- async (httpLBS "http://example.com")
+  a2 <- async (httpLBS "http://haskell.org")
+
+  -- wait 等待结果
+  r1 <- wait a1
+  r2 <- wait a2
+
+  putStrLn ("Example: " ++ show (getResponseStatus r1))
+  putStrLn ("Haskell: " ++ show (getResponseStatus r2))
+
+-- 并发映射
+concurrentMap :: (a -> IO b) -> [a] -> IO [b]
+concurrentMap f xs = do
+  asyncs <- mapM (async . f) xs
+  mapM wait asyncs</code></pre>
+
+<h2>5. 并行策略（Par）</h2>
+
+<pre><code>import Control.Parallel.Strategies
+
+-- parallel：纯计算的并行
+
+-- 普通计算
+sumSquares :: [Int] -> Int
+sumSquares xs = sum (map (^2) xs)
+
+-- 并行计算
+sumSquaresPar :: [Int] -> Int
+sumSquaresPar xs = sum (map (^2) xs `using` parList rseq)
+
+-- 策略说明
+-- rseq   : 求值为弱头范式
+-- rdeepseq : 完全求值
+-- parList : 列表并行
+-- parMap  : 并行 map
+
+-- 使用
+main :: IO ()
+main = do
+  let result = sumSquaresPar [1..1000000]
+  print result
+
+-- 需要编译：ghc -O2 -threaded Main.hs
+-- 运行：./Main +RTS -N4 （使用 4 核）</code></pre>
+
+<h2>6. 选择指南</h2>
+
+<table class="type-table">
+  <tr><th>场景</th><th>工具</th><th>说明</th></tr>
+  <tr><td>纯计算加速</td><td><span class="inline-code">Strategies</span></td><td>并行策略，自动划分</td></tr>
+  <tr><td>IO 并发任务</td><td><span class="inline-code">async</span></td><td>最简单的并发 IO</td></tr>
+  <tr><td>共享状态</td><td><span class="inline-code">STM</span></td><td>安全的事务内存</td></tr>
+  <tr><td>生产者/消费者</td><td><span class="inline-code">Chan</span></td><td>通道通信</td></tr>
+  <tr><td>线程同步</td><td><span class="inline-code">MVar</span></td><td>单槽位同步</td></tr>
+</table>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>用 <span class="inline-code">async</span> 并发下载 3 个 URL，等待所有完成，打印每个响应长度。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>用 <span class="inline-code">STM</span> 实现一个线程安全的计数器，10 个线程各加 1000 次。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>用 <span class="inline-code">parListChunk</span> 并行计算一个大列表中所有元素的平方和，观察性能提升。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li><span class="inline-code">forkIO</span> 创建轻量级线程</li>
+  <li><span class="inline-code">async</span> 简化并发 IO 管理</li>
+  <li><span class="inline-code">STM</span> 提供安全的事务内存</li>
+  <li><span class="inline-code">Strategies</span> 实现纯计算并行</li>
+  <li>编译时需要 <span class="inline-code">-threaded</span> 标志</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0023-parser-combinators.html">0023 - 解析器组合子</a><br>
+  <strong>下一课：</strong><a href="0025-final-project.html">0025 - 实战项目</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>

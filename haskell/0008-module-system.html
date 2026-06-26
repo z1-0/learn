@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第八课：模块系统</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+</head>
+<body>
+
+<h1>第八课：模块系统</h1>
+<div class="lesson-meta">
+  课程编号: 0008 | 前置知识: 第七课（类型类） | 预计时间: 25-30 分钟
+</div>
+
+<p>模块是组织 Haskell 代码的基本单位。它们控制命名空间和可见性，让你把代码分到不同文件中。</p>
+
+<h2>1. 模块基础</h2>
+
+<pre><code>-- 文件: Geometry/Shapes.hs
+module Geometry.Shapes
+  ( Circle(..)     -- 导出类型和所有构造器
+  , Rect(..)
+  , area           -- 导出函数
+  , perimeter
+  ) where
+
+data Shape = Circle Double | Rect Double Double
+  deriving (Show, Eq)
+
+area :: Shape -> Double
+area (Circle r) = pi * r ^ 2
+area (Rect w h) = w * h
+
+perimeter :: Shape -> Double
+perimeter (Circle r) = 2 * pi * r
+perimeter (Rect w h) = 2 * (w + h)</code></pre>
+
+<h2>2. 导入模块</h2>
+
+<pre><code>-- 完整导入
+import Data.List
+import qualified Data.Map as Map     -- 带限定符
+import Data.Maybe (fromMaybe)        -- 只导入特定函数
+import Data.Char (toUpper, toLower)  -- 导入多个
+import Data.Text hiding (splitOn)    -- 隐藏特定函数</code></pre>
+
+<div class="comparison">
+  <div>
+    <div class="comparison-label">Java</div>
+    <code>import java.util.List;<br>import java.util.*;</code>
+  </div>
+  <div>
+    <div class="comparison-label">Nix</div>
+    <code>import &lt;nixpkgs&gt;<br>inherit lib;</code>
+  </div>
+  <div>
+    <div class="comparison-label">Haskell</div>
+    <code>import Data.List<br>import qualified Data.Map as Map</code>
+  </div>
+</div>
+
+<h2>3. qualified 导入</h2>
+
+<pre><code>-- 使用 qualified 避免命名冲突
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+
+-- 使用时加前缀
+myMap :: Map.Map Int String
+myMap = Map.fromList [(1, "one"), (2, "two")]
+
+mySet :: Set.Set Int
+mySet = Set.fromList [1, 2, 3]</code></pre>
+
+<h2>4. 标准库常用模块</h2>
+
+<table class="type-table">
+  <tr><th>模块</th><th>用途</th><th>关键函数</th></tr>
+  <tr><td><span class="inline-code">Prelude</span></td><td>默认导入的模块</td><td><span class="inline-code">map</span>, <span class="inline-code">filter</span>, <span class="inline-code">foldl</span>, <span class="inline-code">head</span></td></tr>
+  <tr><td><span class="inline-code">Data.List</span></td><td>列表操作</td><td><span class="inline-code">sort</span>, <span class="inline-code">nub</span>, <span class="inline-code">intercalate</span></td></tr>
+  <tr><td><span class="inline-code">Data.Maybe</span></td><td>Maybe 处理</td><td><span class="inline-code">fromMaybe</span>, <span class="inline-code">mapMaybe</span></td></tr>
+  <tr><td><span class="inline-code">Data.Map</span></td><td>映射 (字典)</td><td><span class="inline-code">fromList</span>, <span class="inline-code">lookup</span></td></tr>
+  <tr><td><span class="inline-code">Data.Set</span></td><td>集合</td><td><span class="inline-code">fromList</span>, <span class="inline-code">union</span></td></tr>
+  <tr><td><span class="inline-code">Data.Char</span></td><td>字符操作</td><td><span class="inline-code">toUpper</span>, <span class="inline-code">isDigit</span></td></tr>
+  <tr><td><span class="inline-code">System.IO</span></td><td>文件 IO</td><td><span class="inline-code">readFile</span>, <span class="inline-code">writeFile</span></td></tr>
+</table>
+
+<h2>5. 模块结构最佳实践</h2>
+
+<pre><code>-- 典型的 Haskell 项目结构
+src/
+  Main.hs              -- 入口文件，module Main where
+  Lib.hs               -- 库模块，module Lib where
+  Utils/
+    String.hs          -- module Utils.String where
+    File.hs            -- module Utils.File where
+  Data/
+    Types.hs           -- module Data.Types where</code></pre>
+
+<div class="tip">
+  <strong>注意：</strong>文件名必须与模块名匹配。<span class="inline-code">module Utils.String</span> 必须在 <span class="inline-code">Utils/String.hs</span> 中。
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 1</div>
+  <p>创建一个 <span class="inline-code">Math</span> 模块，导出 <span class="inline-code">factorial</span> 和 <span class="inline-code">fibonacci</span> 函数。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 2</div>
+  <p>在另一个文件中导入 <span class="inline-code">Data.List</span>，使用 <span class="inline-code">sort</span> 和 <span class="inline-code">nub</span>（去重）处理一个列表。</p>
+</div>
+
+<div class="exercise">
+  <div class="exercise-title">练习 3</div>
+  <p>解释 <span class="inline-code">import qualified Data.Map as M</span> 中 <span class="inline-code">qualified</span> 和 <span class="inline-code">as M</span> 的作用。</p>
+</div>
+
+<h2>小结</h2>
+
+<ul>
+  <li><span class="inline-code">module</span> 定义模块，<span class="inline-code">import</span> 导入模块</li>
+  <li>文件名 = 模块名 + <span class="inline-code">.hs</span></li>
+  <li>可以控制导出列表，隐藏内部实现</li>
+  <li><span class="inline-code">qualified</span> 避免命名冲突</li>
+  <li>标准库有丰富的模块体系</li>
+</ul>
+
+<div class="nav">
+  <strong>上一课：</strong><a href="0007-typeclasses.html">0007 - 类型类基础</a><br>
+  <strong>下一课：</strong><a href="0009-io-and-do-notation.html">0009 - IO 与 do 记法</a><br>
+  <strong>参考：</strong><a href="../reference/glossary.html">术语表</a> |
+</div>
+
+</body>
+</html>
