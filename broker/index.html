@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>券商服务</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    min-height: 100vh;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 2rem 1rem; }
+
+  .wechat-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background: linear-gradient(135deg, #16213e, #1a1a2e);
+    border: 1px solid #2d3a5c;
+    border-radius: 12px;
+    padding: 1.2rem 2rem;
+    margin-bottom: 2rem;
+  }
+  .wechat-bar img {
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    border: 2px solid #3ddc84;
+    cursor: zoom-in;
+    transition: transform 0.2s;
+  }
+  .wechat-bar img:hover { transform: scale(1.05); }
+  .wechat-bar .label { font-size: 1.1rem; font-weight: 600; }
+  .wechat-bar .sub { font-size: 0.9rem; color: #8b949e; margin-top: 0.2rem; }
+
+  .advisor {
+    text-align: center;
+  }
+  .advisor img {
+    max-width: 100%;
+    border-radius: 12px;
+    border: 1px solid #30363d;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    cursor: zoom-in;
+    transition: transform 0.2s;
+  }
+  .advisor img:hover { transform: scale(1.01); }
+  .advisor .caption {
+    margin-top: 1rem;
+    color: #8b949e;
+    font-size: 0.9rem;
+  }
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #21262d;
+    color: #8b949e;
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    cursor: zoom-out;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .lightbox.active { display: flex; }
+  .lightbox img {
+    max-width: 95vw;
+    max-height: 95vh;
+    border-radius: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="wechat-bar">
+    <img src="wechat.png" alt="微信二维码" onclick="openLightbox(this.src)">
+    <div>
+      <div class="label">微信扫码咨询</div>
+      <div class="sub">添加好友，获取一对一投资服务</div>
+    </div>
+  </div>
+
+  <div class="advisor">
+    <img src="advisor.png" alt="券商服务" onclick="openLightbox(this.src)">
+    <div class="caption">券商专业服务</div>
+  </div>
+
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="">
+  </div>
+
+  <footer>投资有风险，入市需谨慎</footer>
+
+<script>
+  function openLightbox(src) {
+    var lb = document.getElementById('lightbox');
+    document.getElementById('lightbox-img').src = src;
+    lb.classList.add('active');
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeLightbox();
+  });
+</script>
+
+</div>
+</body>
+</html>
