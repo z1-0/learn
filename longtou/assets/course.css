@@ -1,0 +1,109 @@
+/* 龙头战法教程 — 在 reference/dark-theme.css 之上补充课程组件 */
+
+body { max-width: 820px; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  font-size: .85rem; color: var(--text-muted);
+  padding-bottom: .8rem; margin-bottom: 1.6rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.topbar a { color: var(--text-secondary); }
+.topbar .here { color: var(--accent-blue); }
+
+.ch-head { margin-bottom: 2rem; }
+.ch-num {
+  font-family: 'Fira Code', ui-monospace, monospace;
+  font-size: .8rem; letter-spacing: .18em; color: var(--text-muted);
+}
+.ch-head h1 { margin-top: .4rem; font-size: 1.75rem; }
+.ch-meta { color: var(--text-muted); font-size: .88rem; margin-top: .6rem; }
+
+.callout {
+  background: var(--bg-secondary); border: 1px solid var(--border-color);
+  border-radius: 8px; padding: 1rem 1.3rem; margin: 1.4rem 0;
+}
+.callout .ct {
+  font-weight: bold; font-size: .92rem; margin-bottom: .4rem;
+}
+.callout.blue  { border-left: 4px solid var(--accent-blue); }
+.callout.blue .ct { color: var(--accent-blue); }
+.callout.green { border-left: 4px solid var(--accent-green); }
+.callout.green .ct { color: var(--accent-green); }
+.callout.red   { border-left: 4px solid var(--accent-red); }
+.callout.red .ct { color: var(--accent-red); }
+.callout.yellow{ border-left: 4px solid var(--accent-yellow); }
+.callout.yellow .ct { color: var(--accent-yellow); }
+.callout p:last-child { margin-bottom: 0; }
+
+table.tbl { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: .93rem; }
+table.tbl th, table.tbl td { border: 1px solid var(--border-color); padding: .55rem .7rem; text-align: left; vertical-align: top; }
+table.tbl th { background: var(--bg-secondary); color: var(--accent-blue); font-size: .85rem; }
+table.tbl td:first-child { color: var(--text-primary); white-space: nowrap; }
+table.tbl tr:nth-child(even) td { background: rgba(26,26,46,.45); }
+
+.kv { display: grid; grid-template-columns: 150px 1fr; gap: .5rem 1.2rem; margin: 1rem 0; font-size: .95rem; }
+.kv .k { color: var(--text-muted); font-size: .85rem; }
+
+.flow { display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch; margin: 1.2rem 0; }
+.flow .step {
+  flex: 1 1 140px; background: var(--bg-secondary);
+  border: 1px solid var(--border-color); border-radius: 8px;
+  padding: .7rem .8rem; font-size: .88rem;
+}
+.flow .step b { display: block; color: var(--accent-blue); font-size: .82rem; margin-bottom: .25rem; }
+.flow .arr { align-self: center; color: var(--text-muted); }
+
+.lesson-meta a { color: var(--accent-blue); }
+
+/* 目录页 */
+.course-header { text-align: center; margin-bottom: 2rem; }
+.course-header h1 { border: none; font-size: 2.1rem; }
+.course-header p { color: var(--text-secondary); font-size: 1.02rem; }
+.phase { margin-bottom: 2.4rem; }
+.phase-title {
+  font-size: 1.15rem; color: var(--accent-yellow);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: .45rem; margin-bottom: .5rem;
+}
+.phase-desc { color: var(--text-muted); font-size: .87rem; margin: -.2rem 0 .9rem; }
+.lesson-list { list-style: none; padding: 0; }
+.lesson-list li {
+  padding: .55rem 0; border-bottom: 1px solid var(--border-color);
+  display: flex; align-items: baseline; gap: .8rem;
+}
+.lesson-list li:last-child { border: none; }
+.lesson-num {
+  color: var(--accent-blue); font-family: 'Fira Code', monospace;
+  font-size: .82rem; min-width: 2.6rem;
+}
+.lesson-list a { flex: 1; }
+.lesson-tag {
+  font-size: .72rem; color: var(--text-muted);
+  font-family: 'Fira Code', monospace; letter-spacing: .06em;
+}
+.lesson-tag.new { color: var(--accent-green); }
+
+/* 章末导航 */
+.chnav {
+  display: flex; justify-content: space-between; gap: 1rem;
+  margin-top: 3rem; padding-top: 1.2rem;
+  border-top: 1px solid var(--border-color); font-size: .92rem;
+}
+.chnav a { display: block; max-width: 46%; }
+.chnav .lab { display: block; color: var(--text-muted); font-size: .76rem; letter-spacing: .1em; margin-bottom: .2rem; }
+.chnav .next { text-align: right; margin-left: auto; }
+
+.disclaimer {
+  margin-top: 2.5rem; padding: 1rem 1.2rem;
+  background: var(--bg-secondary); border: 1px dashed var(--border-color);
+  border-radius: 8px; color: var(--text-muted); font-size: .85rem;
+}
+
+@media (max-width: 640px) {
+  .kv { grid-template-columns: 1fr; gap: .15rem 0; }
+  .kv .k { margin-top: .6rem; }
+  .chnav a { max-width: 100%; }
+  .chnav .next { text-align: left; margin-left: 0; }
+}

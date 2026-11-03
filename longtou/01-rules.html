@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 01 章 交易规则与市场结构 · 龙头战法教程</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+<link rel="stylesheet" href="assets/course.css">
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html">← 目录</a>
+  <span class="here">第 01 章 · 交易规则</span>
+</div>
+
+<div class="ch-head">
+  <div class="ch-num">CHAPTER 01</div>
+  <h1>交易规则与市场结构</h1>
+  <div class="ch-meta">前置：无 ｜ 预计 12 分钟 ｜ 本教程所有案例默认主板 10cm，先看这一章</div>
+</div>
+
+<p>后面所有"5%-9% 大阳线""跌超 7% 算大面"的口径，都建立在<strong>主板 10% 涨跌幅</strong>之上。不同板块规则完全不同，规则搞错，情绪判断和止损位全是错的。</p>
+
+<h2>1. 涨跌幅规则</h2>
+
+<table class="tbl">
+  <tr><th>板块</th><th>日涨跌幅</th><th>说明</th></tr>
+  <tr><td>沪深主板</td><td>±10%</td><td>本教程默认口径；ST 主板 ±5%</td></tr>
+  <tr><td>创业板</td><td>±20%</td><td>20cm，同样一次涨停顶别人两个，打法完全不同</td></tr>
+  <tr><td>科创板</td><td>±20%</td><td>同上，且开户门槛更高，参与者结构不同</td></tr>
+  <tr><td>北交所</td><td>±30%</td><td>30cm，波动极端，情绪传导与主板不同步</td></tr>
+  <tr><td>新股</td><td>上市前 5 日无涨跌幅</td><td>第 5 日起按所属板块执行</td></tr>
+</table>
+
+<div class="callout blue">
+  <div class="ct">涨停价怎么算</div>
+  <p>涨停价 = 前收盘价 ×（1 + 涨跌幅），按四舍五入保留到分。所以 10.05 元的票涨停是 11.06 元，不是 11.05 元 —— 挂单时算错一分，排板就排不到。</p>
+</div>
+
+<div class="callout red">
+  <div class="ct">为什么必须先分清板块</div>
+  <p>20cm 板块一天能从 -10% 拉到 +20%，"大面""核按钮""弱转强"的幅度含义全变了；本教程的数值口径（炸板率阈值、大面 = 跌超 7%、单笔亏损封顶比例）都按主板 10cm 写。做 20cm 前，先把阈值按比例重新标定，别直接套用。</p>
+</div>
+
+<h2>2. T+1 与资金可用</h2>
+
+<div class="kv">
+  <div class="k">T+1</div><div>当日买入的股票，下一个交易日才能卖出。这就是为什么"今天买错"只能用止损位兜底，不能盘中纠错</div>
+  <div class="k">资金 T+0 可用</div><div>当天卖出股票的资金当天可以继续买股票，但不能转出银行卡</div>
+  <div class="k">对超短的含义</div><div>一天只有一次下注机会，买点选错当天无法撤销 —— 所以买点必须是盘前计划里的（第 12、15 章）</div>
+</div>
+
+<h2>3. 一天的时间轴</h2>
+
+<table class="tbl">
+  <tr><th>时段</th><th>规则</th><th>超短含义</th></tr>
+  <tr><td>9:15-9:20</td><td>可挂单、可撤单</td><td>单子能骗人，诱多诱空都在这儿演（第 07 章）</td></tr>
+  <tr><td>9:20-9:25</td><td>可挂单、<strong>不可撤单</strong></td><td>真章，撤不掉的单才是意图</td></tr>
+  <tr><td>9:25</td><td>撮合产生开盘价</td><td>竞价定强弱，四种走法的定性起点</td></tr>
+  <tr><td>9:25-9:30</td><td>可报单，不撮合</td><td>观察期，别冲动</td></tr>
+  <tr><td>9:30-11:30 / 13:00-14:57</td><td>连续竞价</td><td>主战场：上板时间、分时、封单都在这里读</td></tr>
+  <tr><td>14:57-15:00</td><td>收盘集合竞价，不可撤单</td><td>尾盘偷袭板出没之地（第 06 章）</td></tr>
+  <tr><td>15:00</td><td>收盘</td><td>35 分钟复盘开始（第 12 章）</td></tr>
+</table>
+
+<h2>4. 交易成本与摩擦</h2>
+
+<div class="kv">
+  <div class="k">佣金</div><div>按成交额比例收取，多数券商对短线客户可谈到万 1-万 2.5 量级（具体以你的券商为准）</div>
+  <div class="k">印花税</div><div>卖出时单边收取（税率以最新规定为准）</div>
+  <div class="k">过户费</div><div>极低，忽略不计</div>
+  <div class="k">滑点</div><div>真正的大头。打板排不到、排到炸板、半路追高，一次滑点常抵得上十次佣金</div>
+</div>
+
+<div class="callout green">
+  <div class="ct">一笔账</div>
+  <p>单边成本按 0.15% 估算，一进一出约 0.3%，再加一次 1% 的滑点，一笔交易的摩擦成本约 1.3%。涨停次日溢价经常只有 2-3% —— 也就是说，<strong>买错一次，要三次正确才回本</strong>。这就是为什么买点必须苛刻、仓位必须克制。</p>
+</div>
+
+<h2>5. 龙虎榜与异常波动</h2>
+
+<ul>
+  <li><strong>龙虎榜</strong>：当日满足涨跌幅偏离值、换手率、振幅等条件的个股，交易所公布买入与卖出前五席位。游资动向、席位溢价都从这里读。</li>
+  <li><strong>异常波动与停牌核查</strong>：连续异动可能被停牌核查，复牌走势不可预判。高位票遇到核查公告，按风险处理，不按"利好"处理。</li>
+  <li><strong>ST 与退市风险</strong>：被实施风险警示的股票涨跌幅收窄、流动性变差，且可能连续跌停无法出逃。超短票池里直接排除 ST。</li>
+</ul>
+
+<div class="callout yellow">
+  <div class="ct">规则类信息以交易所最新公告为准</div>
+  <p>涨跌幅、竞价机制、异常波动标准都会随改革调整（全面注册制后主板新股前 5 日即无涨跌幅）。本章给的是稳定不变的部分：时间轴、T+1、成本结构；数值类规则动手前再核对一次交易所与券商的最新规定。</p>
+</div>
+
+<div class="chnav">
+  <a href="00-overview.html"><span class="lab">上一章</span>00 导读：体系总览</a>
+  <a class="next" href="02-sentiment.html"><span class="lab">下一章</span>02 情绪周期</a>
+</div>
+
+</body>
+</html>
