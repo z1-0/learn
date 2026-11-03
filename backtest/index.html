@@ -1,0 +1,2138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="A股 108 个量化策略回测总表与分类详解：打板家族、海龟×风险平价冠军、多因子证伪清单与最终配置建议。">
+<title>A股策略回测 108 详解 · learn</title>
+<link rel="stylesheet" href="../reference/dark-theme.css">
+<link rel="stylesheet" href="assets/backtest.css">
+</head>
+<body>
+
+<div class="topbar">
+  <a href="../">← 笔记库</a>
+  <span>A股策略回测 108 · 统一口径 2019-2026</span>
+</div>
+
+<h1 id="a股策略回测-108-详解">A股策略回测 108 详解</h1>
+<blockquote>
+<p>数据源：<code>workflows/strategies/INDEX.md</code>（权威回测总表，按夏普降序） 口径：统一 = 2019-01 ~ 2026-08 / 交易成本 0.15% / 月度调仓；短线类另跑日频(D)调仓版。 说明：个别策略的 <code>*.md</code> 详情文件与 INDEX 存在数据差异，本文档<strong>一律以 INDEX.md 为准</strong>。</p>
+</blockquote>
+<hr />
+<h2 id="tldr--最重要的-5-条结论">TL;DR —— 最重要的 5 条结论</h2>
+<ol type="1">
+<li><strong>打板（涨停）家族是唯一的短线候选 alpha，但存在「买不进」执行折价</strong>：<code>board_hold / first_board</code>（夏普 1.89）、<code>dragon_head</code>（1.88）、<code>board_1d</code>（1.85），年化 68-80%。<strong>涨停是唯一有效的事前信号</strong>；涨 3-9%、半路、跳空 3%、尾盘强势等"近似涨停"全部失效甚至巨亏。
+<ul>
+<li>⚠️ <strong>可执行性复核（2026-09-08 新增）</strong>：原口径假设能以"昨日涨停价"无限买入。加入<strong>真实成交约束</strong>重测后：
+<ul>
+<li>若只能<strong>次日开盘价成交</strong>且一字/顶板开盘（开盘即涨停）买不进 → 板家族全线转负（<code>board_hold</code> 1.89→<strong>-0.17</strong>，<code>board_1d</code> 1.85→<strong>-0.27</strong>）。因为打板利润几乎全部来自"昨日涨停价→次日高开"的隔夜溢价，而该价格现实中排队买不到。</li>
+<li>若采用更贴近实战的<strong>排板口径</strong>（涨停但非一字开盘→按涨停价排队买入）→ 折价但仍显著为正：<code>board_hold</code> <strong>1.59 / 55.6%</strong>、<code>board_1d</code> <strong>1.55 / 50.1%</strong>、<code>board_shrink</code> <strong>1.16 / 17.6%</strong>。</li>
+<li><strong>结论：打板 alpha 真实存在但被高估 ~20-25%（1.89→1.55~1.59）；无论何种口径都远优于近似信号。"次日开盘追高买"是亏损口径，实战只能排板或尾盘。</strong></li>
+</ul></li>
+</ul></li>
+<li><strong>全场冠军 = 海龟×风险平价（曲线 50/50 融合）</strong>：<code>ens_turtle_rp2</code>，夏普 <strong>2.01</strong>、年化 18.59%、回撤仅 -7.39%、胜率 75.8%。方法论上**"策略收益曲线融合"(2.01) 远优于"权重层面组合"(1.00)**。
+<ul>
+<li>✅ <strong>样本外验证（2026-09-08）</strong>：IS 定参期 2019-2023 / OOS 独立重跑 2024-2026，海龟参数 IS 选优=原固定 (20,10,2.0)，无漂移；<code>ens_turtle_rp2</code> 双腿合体 OOS 夏普 <strong>1.84</strong>（年化 19.9%，回撤 -7.8%），衰减仅 8%。<strong>冠军地位样本外成立，实盘预期按 1.84 而非 2.01 取值。</strong></li>
+</ul></li>
+<li><strong>集成有最优规模</strong>：3~6 条高夏普策略曲线做等权/风险平价最佳（<code>ens_top3</code> 1.81、<code>ens_elite</code> 1.64）；塞到 7~9 条就被稀释（1.57 / 1.45）。</li>
+<li><strong>选股因子</strong>：动量+低波最强（1.08）；价值（0.93）、质量（0.65~0.74）、ML（0.58）在 2019-2026 均被证伪。</li>
+<li><strong>批量证伪清单</strong>：MACD / RSI / KD / 布林 / 双均线 / 低吸（支撑·黄金坑·地量·RSI补）/ 网格 / 日历效应 / 宏观择时 / Markowitz 优化——全部 &lt;0.8 或为负。防御只信任趋势过滤（SMA200 / 动量）。</li>
+</ol>
+<hr />
+<h2 id="第一部分完整总表108-策略index-权威数据">第一部分：完整总表（108 策略，INDEX 权威数据）</h2>
+<div class="tw"><table class="tbl">
+<thead>
+<tr>
+<th>排名</th>
+<th>名称</th>
+<th>类别</th>
+<th>年化</th>
+<th>回撤</th>
+<th>夏普</th>
+<th>胜率</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>海龟×风险平价(曲线50/50)</td>
+<td>大周期/集成</td>
+<td>18.59%</td>
+<td>-7.39%</td>
+<td><strong>2.01</strong></td>
+<td>75.8%</td>
+</tr>
+<tr>
+<td>2</td>
+<td>海龟交易法则(沪深300,优化20/10/2.0ATR)</td>
+<td>经典量化</td>
+<td>25.48%</td>
+<td>-9.86%</td>
+<td>1.96</td>
+<td>57.1%</td>
+</tr>
+<tr>
+<td>3</td>
+<td>海龟+回撤护栏(峰回撤10%锁仓)</td>
+<td>经典量化/风控</td>
+<td>25.48%</td>
+<td>-9.86%</td>
+<td>1.96</td>
+<td>57.1%</td>
+</tr>
+<tr>
+<td>4</td>
+<td>海龟×风险平价(曲线50/50)+15%波动目标</td>
+<td>大周期/集成</td>
+<td>29.77%</td>
+<td>-14.71%</td>
+<td>1.90</td>
+<td>75.8%</td>
+</tr>
+<tr>
+<td>5</td>
+<td>打板连板持有(涨停买/破板卖)</td>
+<td>短线/打板</td>
+<td>79.56%</td>
+<td>-21.21%</td>
+<td>1.89</td>
+<td>61.5%</td>
+</tr>
+<tr>
+<td>6</td>
+<td>首板战法(首板持有至破板)</td>
+<td>短线/打板</td>
+<td>79.56%</td>
+<td>-21.21%</td>
+<td>1.89</td>
+<td>61.5%</td>
+</tr>
+<tr>
+<td>7</td>
+<td>龙头战法(连板最强Top8)</td>
+<td>短线/打板</td>
+<td>78.70%</td>
+<td>-21.21%</td>
+<td>1.88</td>
+<td>61.5%</td>
+</tr>
+<tr>
+<td>8</td>
+<td>打板今买明卖(涨停今买次日卖)</td>
+<td>短线/打板</td>
+<td>68.69%</td>
+<td>-22.05%</td>
+<td>1.85</td>
+<td>64.8%</td>
+</tr>
+<tr>
+<td>9</td>
+<td>风险平价(全资产)+15%波动目标</td>
+<td>大周期</td>
+<td>11.20%</td>
+<td>-7.89%</td>
+<td>1.83</td>
+<td>71.4%</td>
+</tr>
+<tr>
+<td>10</td>
+<td>集成组合(海龟+风险平价+低波 等权)</td>
+<td>大周期/集成</td>
+<td>15.38%</td>
+<td>-6.63%</td>
+<td>1.81</td>
+<td>70.3%</td>
+</tr>
+<tr>
+<td>11</td>
+<td>集成组合(3策略+15%波动目标)</td>
+<td>大周期/集成</td>
+<td>26.31%</td>
+<td>-11.52%</td>
+<td>1.80</td>
+<td>74.7%</td>
+</tr>
+<tr>
+<td>12</td>
+<td>顶配3策略(海龟+全资产RP+低波)</td>
+<td>大周期/集成</td>
+<td>15.64%</td>
+<td>-6.75%</td>
+<td>1.79</td>
+<td>71.4%</td>
+</tr>
+<tr>
+<td>13</td>
+<td>全局集成(全资产风险平价+因子)</td>
+<td>大周期/集成</td>
+<td>14.06%</td>
+<td>-7.78%</td>
+<td>1.65</td>
+<td>67.0%</td>
+</tr>
+<tr>
+<td>14</td>
+<td>精英集成(6高夏普策略风险平价)</td>
+<td>大周期/集成</td>
+<td>13.49%</td>
+<td>-7.22%</td>
+<td>1.64</td>
+<td>68.1%</td>
+</tr>
+<tr>
+<td>15</td>
+<td>风险平价(全资产1/波动加权)</td>
+<td>大周期</td>
+<td>7.15%</td>
+<td>-7.89%</td>
+<td>1.58</td>
+<td>71.4%</td>
+</tr>
+<tr>
+<td>16</td>
+<td>精英集成2.0(7策略风险平价)</td>
+<td>大周期/集成</td>
+<td>14.09%</td>
+<td>-7.67%</td>
+<td>1.57</td>
+<td>67.0%</td>
+</tr>
+<tr>
+<td>17</td>
+<td>超级集成(9策略风险平价)</td>
+<td>大周期/集成</td>
+<td>10.96%</td>
+<td>-7.18%</td>
+<td>1.45</td>
+<td>69.2%</td>
+</tr>
+<tr>
+<td>18</td>
+<td>缩量板(缩量涨停持有)</td>
+<td>短线/打板</td>
+<td>28.84%</td>
+<td>-10.40%</td>
+<td>1.42</td>
+<td>28.6%</td>
+</tr>
+<tr>
+<td>19</td>
+<td>打板+大盘过滤(站上MA20才持)</td>
+<td>短线/打板</td>
+<td>33.25%</td>
+<td>-28.37%</td>
+<td>1.26</td>
+<td>34.1%</td>
+</tr>
+<tr>
+<td>20</td>
+<td>风险平价(1/波动加权)</td>
+<td>大周期</td>
+<td>6.40%</td>
+<td>-7.13%</td>
+<td>1.25</td>
+<td>63.7%</td>
+</tr>
+<tr>
+<td>21</td>
+<td>多资产再集成(RP+GTAA+动量)</td>
+<td>大周期/集成</td>
+<td>13.65%</td>
+<td>-13.35%</td>
+<td>1.21</td>
+<td>69.2%</td>
+</tr>
+<tr>
+<td>22</td>
+<td>多资产再集成+15%波动目标</td>
+<td>大周期/集成</td>
+<td>24.66%</td>
+<td>-23.65%</td>
+<td>1.16</td>
+<td>69.2%</td>
+</tr>
+<tr>
+<td>23</td>
+<td>个股多因子集成(低波+动量低波+个股动量 风险平价)</td>
+<td>多因子/集成</td>
+<td>15.97%</td>
+<td>-21.62%</td>
+<td>1.12</td>
+<td>60.4%</td>
+</tr>
+<tr>
+<td>24</td>
+<td>全球战术配置(12月动量跳过1月)</td>
+<td>多资产/战术</td>
+<td>11.27%</td>
+<td>-14.87%</td>
+<td>1.11</td>
+<td>67.0%</td>
+</tr>
+<tr>
+<td>25</td>
+<td>动量+低波复合因子选股(篮,N=8,M=252)</td>
+<td>多因子</td>
+<td>19.31%</td>
+<td>-26.43%</td>
+<td>1.08</td>
+<td>59.3%</td>
+</tr>
+<tr>
+<td>26</td>
+<td>低波动因子选股(扩池59只,N=5)</td>
+<td>多因子</td>
+<td>15.11%</td>
+<td>-13.90%</td>
+<td>1.08</td>
+<td>61.5%</td>
+</tr>
+<tr>
+<td>27</td>
+<td>动量-低波-估值三因子(扩池59,N=12)</td>
+<td>多因子/估值</td>
+<td>19.07%</td>
+<td>-18.56%</td>
+<td>1.06</td>
+<td>60.4%</td>
+</tr>
+<tr>
+<td>28</td>
+<td>全球战术配置(12月动量)+15%波动目标</td>
+<td>多资产/战术</td>
+<td>20.67%</td>
+<td>-27.95%</td>
+<td>1.05</td>
+<td>67.0%</td>
+</tr>
+<tr>
+<td>29</td>
+<td>多周期趋势(3/6/12月动量均值)</td>
+<td>多资产/趋势</td>
+<td>10.66%</td>
+<td>-14.82%</td>
+<td>1.04</td>
+<td>63.7%</td>
+</tr>
+<tr>
+<td>30</td>
+<td>指数增强(篮内复合因子加权,N=10)</td>
+<td>多因子/指数增强</td>
+<td>19.04%</td>
+<td>-26.50%</td>
+<td>1.03</td>
+<td>56.0%</td>
+</tr>
+<tr>
+<td>31</td>
+<td>全球战术配置(GTAA,SMA200)</td>
+<td>多资产/战术</td>
+<td>10.42%</td>
+<td>-13.88%</td>
+<td>1.03</td>
+<td>67.0%</td>
+</tr>
+<tr>
+<td>32</td>
+<td>动量+低波复合(扩池59,N=8,M=126)</td>
+<td>多因子</td>
+<td>21.07%</td>
+<td>-34.03%</td>
+<td>1.03</td>
+<td>57.1%</td>
+</tr>
+<tr>
+<td>33</td>
+<td>动量-低波-估值三因子选股(篮,N=5)</td>
+<td>多因子/估值</td>
+<td>17.99%</td>
+<td>-30.19%</td>
+<td>1.03</td>
+<td>58.2%</td>
+</tr>
+<tr>
+<td>34</td>
+<td>横截面资产动量(Top3)</td>
+<td>多资产/动量</td>
+<td>21.72%</td>
+<td>-27.19%</td>
+<td>1.01</td>
+<td>67.0%</td>
+</tr>
+<tr>
+<td>35</td>
+<td>双重动量(绝对+相对 Top3)</td>
+<td>多资产/动量</td>
+<td>21.72%</td>
+<td>-27.19%</td>
+<td>1.01</td>
+<td>67.0%</td>
+</tr>
+<tr>
+<td>36</td>
+<td>低波动因子选股(篮,优化N=3)</td>
+<td>多因子</td>
+<td>14.13%</td>
+<td>-17.28%</td>
+<td>1.00</td>
+<td>60.4%</td>
+</tr>
+<tr>
+<td>37</td>
+<td>海龟×风险平价集成</td>
+<td>大周期/集成</td>
+<td>7.69%</td>
+<td>-8.69%</td>
+<td>1.00</td>
+<td>64.8%</td>
+</tr>
+<tr>
+<td>38</td>
+<td>动量-低波-质量三因子选股(篮,N=5)</td>
+<td>多因子/基本面</td>
+<td>19.61%</td>
+<td>-35.75%</td>
+<td>0.97</td>
+<td>50.5%</td>
+</tr>
+<tr>
+<td>39</td>
+<td>估值(价值)因子选股(扩池59,N=12)</td>
+<td>多因子/估值</td>
+<td>17.01%</td>
+<td>-27.71%</td>
+<td>0.93</td>
+<td>56.0%</td>
+</tr>
+<tr>
+<td>40</td>
+<td>商品趋势(商品+金+银 SMA200)</td>
+<td>商品/趋势</td>
+<td>16.87%</td>
+<td>-26.24%</td>
+<td>0.92</td>
+<td>61.5%</td>
+</tr>
+<tr>
+<td>41</td>
+<td>海龟×风险平价集成+15%波动目标</td>
+<td>大周期/集成</td>
+<td>10.21%</td>
+<td>-12.88%</td>
+<td>0.91</td>
+<td>64.8%</td>
+</tr>
+<tr>
+<td>42</td>
+<td>低价可转债等权(双低代理)</td>
+<td>A股特色</td>
+<td>12.45%</td>
+<td>-36.18%</td>
+<td>0.87</td>
+<td>54.9%</td>
+</tr>
+<tr>
+<td>43</td>
+<td>永久组合+趋势过滤(120日线)</td>
+<td>大周期</td>
+<td>7.63%</td>
+<td>-15.28%</td>
+<td>0.85</td>
+<td>60.4%</td>
+</tr>
+<tr>
+<td>44</td>
+<td>换手板(放量涨停持有)</td>
+<td>短线/打板</td>
+<td>13.56%</td>
+<td>-14.86%</td>
+<td>0.84</td>
+<td>34.1%</td>
+</tr>
+<tr>
+<td>45</td>
+<td>估值(价值)因子选股(篮,N=8)</td>
+<td>多因子/估值</td>
+<td>14.78%</td>
+<td>-35.55%</td>
+<td>0.84</td>
+<td>56.0%</td>
+</tr>
+<tr>
+<td>46</td>
+<td>波动率目标风险平价(优化win=126/tgt=15%)</td>
+<td>大周期/配置</td>
+<td>10.35%</td>
+<td>-18.48%</td>
+<td>0.81</td>
+<td>57.1%</td>
+</tr>
+<tr>
+<td>47</td>
+<td>动量-低波-质量三因子(扩池59,N=5)</td>
+<td>多因子/基本面</td>
+<td>17.25%</td>
+<td>-42.77%</td>
+<td>0.80</td>
+<td>56.0%</td>
+</tr>
+<tr>
+<td>48</td>
+<td>永久组合(4资产等权)</td>
+<td>大周期</td>
+<td>8.79%</td>
+<td>-16.71%</td>
+<td>0.80</td>
+<td>54.9%</td>
+</tr>
+<tr>
+<td>49</td>
+<td>通胀+流动性二维regime</td>
+<td>宏观/regime</td>
+<td>6.87%</td>
+<td>-21.71%</td>
+<td>0.78</td>
+<td>62.6%</td>
+</tr>
+<tr>
+<td>50</td>
+<td>动量+低波复合+趋势过滤(篮)</td>
+<td>多因子</td>
+<td>10.86%</td>
+<td>-32.78%</td>
+<td>0.76</td>
+<td>40.7%</td>
+</tr>
+<tr>
+<td>51</td>
+<td>个股动量选股(12月)</td>
+<td>经典量化</td>
+<td>13.65%</td>
+<td>-38.87%</td>
+<td>0.75</td>
+<td>45.1%</td>
+</tr>
+<tr>
+<td>52</td>
+<td>个股篮等权基准</td>
+<td>基准</td>
+<td>12.68%</td>
+<td>-37.72%</td>
+<td>0.74</td>
+<td>51.6%</td>
+</tr>
+<tr>
+<td>53</td>
+<td>质量因子选股(篮,N=5)</td>
+<td>多因子/基本面</td>
+<td>15.98%</td>
+<td>-49.68%</td>
+<td>0.74</td>
+<td>56.0%</td>
+</tr>
+<tr>
+<td>54</td>
+<td>突破波段(20日新高持有)</td>
+<td>波段/突破</td>
+<td>14.30%</td>
+<td>-40.73%</td>
+<td>0.71</td>
+<td>58.2%</td>
+</tr>
+<tr>
+<td>55</td>
+<td>通胀regime(CPI同比趋势)</td>
+<td>宏观/regime</td>
+<td>5.70%</td>
+<td>-13.73%</td>
+<td>0.71</td>
+<td>60.4%</td>
+</tr>
+<tr>
+<td>56</td>
+<td>滚动Markowitz最大夏普配置(优化win=378/reg=0.05)</td>
+<td>大周期/配置</td>
+<td>7.09%</td>
+<td>-25.77%</td>
+<td>0.67</td>
+<td>63.7%</td>
+</tr>
+<tr>
+<td>57</td>
+<td>多资产海龟(唐奇安突破趋势)</td>
+<td>多资产/趋势</td>
+<td>10.42%</td>
+<td>-17.11%</td>
+<td>0.67</td>
+<td>59.3%</td>
+</tr>
+<tr>
+<td>58</td>
+<td>质量因子选股(扩池59,N=15)</td>
+<td>多因子/基本面</td>
+<td>13.07%</td>
+<td>-48.39%</td>
+<td>0.65</td>
+<td>53.8%</td>
+</tr>
+<tr>
+<td>59</td>
+<td>最小方差组合(多资产)</td>
+<td>多资产/优化</td>
+<td>1.65%</td>
+<td>-5.74%</td>
+<td>0.65</td>
+<td>7.7%</td>
+</tr>
+<tr>
+<td>60</td>
+<td>二板晋级战法(二板持有)</td>
+<td>短线/打板</td>
+<td>10.35%</td>
+<td>-30.93%</td>
+<td>0.63</td>
+<td>17.6%</td>
+</tr>
+<tr>
+<td>61</td>
+<td>ETF动量轮动(12月)</td>
+<td>经典量化</td>
+<td>10.60%</td>
+<td>-33.67%</td>
+<td>0.63</td>
+<td>64.8%</td>
+</tr>
+<tr>
+<td>62</td>
+<td>ML选股(扩展窗口岭回归,Top-10)</td>
+<td>多因子/ML</td>
+<td>9.96%</td>
+<td>-52.12%</td>
+<td>0.58</td>
+<td>51.6%</td>
+</tr>
+<tr>
+<td>63</td>
+<td>红利网格(红利指数 2.5%)</td>
+<td>A股特色</td>
+<td>3.16%</td>
+<td>-6.81%</td>
+<td>0.53</td>
+<td>57.1%</td>
+</tr>
+<tr>
+<td>64</td>
+<td>债券择时(国债趋势)</td>
+<td>固定收益/择时</td>
+<td>5.44%</td>
+<td>-15.97%</td>
+<td>0.52</td>
+<td>69.2%</td>
+</tr>
+<tr>
+<td>65</td>
+<td>竞价跳空打板(开盘≥9%,隔日)</td>
+<td>短线/打板</td>
+<td>4.73%</td>
+<td>-15.10%</td>
+<td>0.52</td>
+<td>9.9%</td>
+</tr>
+<tr>
+<td>66</td>
+<td>美林时钟宏观配置(CPI+PMI,优化CF=3.0/D)</td>
+<td>大周期</td>
+<td>7.52%</td>
+<td>-39.43%</td>
+<td>0.51</td>
+<td>59.3%</td>
+</tr>
+<tr>
+<td>67</td>
+<td>北向资金跟随(20日净流入)</td>
+<td>A股特色</td>
+<td>5.03%</td>
+<td>-29.23%</td>
+<td>0.46</td>
+<td>59.3%</td>
+</tr>
+<tr>
+<td>68</td>
+<td>股债再平衡(60/40)</td>
+<td>大周期</td>
+<td>4.60%</td>
+<td>-26.63%</td>
+<td>0.45</td>
+<td>54.9%</td>
+</tr>
+<tr>
+<td>69</td>
+<td>波动率目标(沪深300,目标15%)</td>
+<td>大周期/风控</td>
+<td>6.27%</td>
+<td>-39.35%</td>
+<td>0.44</td>
+<td>54.9%</td>
+</tr>
+<tr>
+<td>70</td>
+<td>个股趋势(MA20&gt;MA60多头)</td>
+<td>中线/趋势</td>
+<td>7.09%</td>
+<td>-49.63%</td>
+<td>0.43</td>
+<td>48.4%</td>
+</tr>
+<tr>
+<td>71</td>
+<td>跳空今买明卖(开盘跳空3%+)</td>
+<td>短线/动量</td>
+<td>7.07%</td>
+<td>-50.58%</td>
+<td>0.42</td>
+<td>42.9%</td>
+</tr>
+<tr>
+<td>72</td>
+<td>唐奇安通道突破(沪深300)</td>
+<td>经典量化</td>
+<td>3.22%</td>
+<td>-12.44%</td>
+<td>0.40</td>
+<td>16.5%</td>
+</tr>
+<tr>
+<td>73</td>
+<td>风险开关(波动率 regime)</td>
+<td>多资产/择时</td>
+<td>4.35%</td>
+<td>-46.85%</td>
+<td>0.36</td>
+<td>59.3%</td>
+</tr>
+<tr>
+<td>74</td>
+<td>箱体突破波段(60日新高)</td>
+<td>波段/突破</td>
+<td>5.64%</td>
+<td>-56.49%</td>
+<td>0.36</td>
+<td>47.3%</td>
+</tr>
+<tr>
+<td>75</td>
+<td>月初效应(月头月尾持股)</td>
+<td>多资产/日历</td>
+<td>5.09%</td>
+<td>-45.10%</td>
+<td>0.35</td>
+<td>53.8%</td>
+</tr>
+<tr>
+<td>76</td>
+<td>均线回踩波段(回踩MA20买)</td>
+<td>波段/均线</td>
+<td>4.26%</td>
+<td>-60.00%</td>
+<td>0.31</td>
+<td>47.3%</td>
+</tr>
+<tr>
+<td>77</td>
+<td>MACD金叉死叉(沪深300)</td>
+<td>经典量化</td>
+<td>2.89%</td>
+<td>-16.25%</td>
+<td>0.30</td>
+<td>22.0%</td>
+</tr>
+<tr>
+<td>78</td>
+<td>中线趋势(站上MA60+多头)</td>
+<td>中线/趋势</td>
+<td>3.14%</td>
+<td>-51.53%</td>
+<td>0.26</td>
+<td>47.3%</td>
+</tr>
+<tr>
+<td>79</td>
+<td>流动性regime(M2同比趋势)</td>
+<td>宏观/regime</td>
+<td>2.22%</td>
+<td>-27.35%</td>
+<td>0.26</td>
+<td>65.9%</td>
+</tr>
+<tr>
+<td>80</td>
+<td>沪深300ETF网格(2.5%)</td>
+<td>A股特色</td>
+<td>3.17%</td>
+<td>-41.12%</td>
+<td>0.26</td>
+<td>53.8%</td>
+</tr>
+<tr>
+<td>81</td>
+<td>ETF动量轮动(6月)</td>
+<td>经典量化</td>
+<td>2.98%</td>
+<td>-32.97%</td>
+<td>0.25</td>
+<td>57.1%</td>
+</tr>
+<tr>
+<td>82</td>
+<td>均值回归(股指偏离均线)</td>
+<td>逆向/均值回归</td>
+<td>2.15%</td>
+<td>-36.59%</td>
+<td>0.21</td>
+<td>53.8%</td>
+</tr>
+<tr>
+<td>83</td>
+<td>双均线短周期(沪深300 MA5/20)</td>
+<td>小周期</td>
+<td>1.65%</td>
+<td>-19.17%</td>
+<td>0.19</td>
+<td>36.3%</td>
+</tr>
+<tr>
+<td>84</td>
+<td>二八轮动(沪深300/中证500)</td>
+<td>A股特色</td>
+<td>1.57%</td>
+<td>-43.06%</td>
+<td>0.17</td>
+<td>63.7%</td>
+</tr>
+<tr>
+<td>85</td>
+<td>股债跷跷板(动量切换)</td>
+<td>大周期/配置</td>
+<td>1.46%</td>
+<td>-23.45%</td>
+<td>0.17</td>
+<td>60.4%</td>
+</tr>
+<tr>
+<td>86</td>
+<td>情绪共振打板(连板≥3家)</td>
+<td>短线/打板</td>
+<td>0.80%</td>
+<td>-10.71%</td>
+<td>0.16</td>
+<td>2.2%</td>
+</tr>
+<tr>
+<td>87</td>
+<td>个股双均线(茅台 MA20/60)</td>
+<td>小周期</td>
+<td>0.76%</td>
+<td>-56.68%</td>
+<td>0.13</td>
+<td>25.3%</td>
+</tr>
+<tr>
+<td>88</td>
+<td>RSI反转(沪深300)</td>
+<td>小周期</td>
+<td>0.58%</td>
+<td>-27.99%</td>
+<td>0.11</td>
+<td>28.6%</td>
+</tr>
+<tr>
+<td>89</td>
+<td>季节性轮动(弱月转债)</td>
+<td>多资产/日历</td>
+<td>0.48%</td>
+<td>-34.14%</td>
+<td>0.10</td>
+<td>52.7%</td>
+</tr>
+<tr>
+<td>90</td>
+<td>双均线趋势(沪深300 MA20/60)</td>
+<td>经典量化/小周期</td>
+<td>-0.33%</td>
+<td>-42.49%</td>
+<td>0.04</td>
+<td>35.2%</td>
+</tr>
+<tr>
+<td>91</td>
+<td>烂板回封战法</td>
+<td>短线/打板</td>
+<td>0.00%</td>
+<td>0.00%</td>
+<td>0.00</td>
+<td>0.0%</td>
+</tr>
+<tr>
+<td>92</td>
+<td>BOLL下轨低吸</td>
+<td>低吸/技术</td>
+<td>-2.06%</td>
+<td>-40.79%</td>
+<td>-0.02</td>
+<td>29.7%</td>
+</tr>
+<tr>
+<td>93</td>
+<td>宏观战术配置(M2+PMI+CPI,优化CF=2.0/M2=8%)</td>
+<td>大周期</td>
+<td>-1.44%</td>
+<td>-41.81%</td>
+<td>-0.06</td>
+<td>58.2%</td>
+</tr>
+<tr>
+<td>94</td>
+<td>布林带均值回归(沪深300 20,2)</td>
+<td>经典量化/小周期</td>
+<td>-0.95%</td>
+<td>-23.23%</td>
+<td>-0.08</td>
+<td>11.0%</td>
+</tr>
+<tr>
+<td>95</td>
+<td>暴跌次日买入(沪深300跌≥2%)</td>
+<td>短线/反转</td>
+<td>-1.25%</td>
+<td>-18.40%</td>
+<td>-0.29</td>
+<td>14.3%</td>
+</tr>
+<tr>
+<td>96</td>
+<td>涨停回调战法(涨停后回踩买)</td>
+<td>短线/反转</td>
+<td>-15.22%</td>
+<td>-81.87%</td>
+<td>-0.31</td>
+<td>42.9%</td>
+</tr>
+<tr>
+<td>97</td>
+<td>ETF均值回归(月度)</td>
+<td>经典量化</td>
+<td>-7.44%</td>
+<td>-49.94%</td>
+<td>-0.32</td>
+<td>44.0%</td>
+</tr>
+<tr>
+<td>98</td>
+<td>RSI超卖低吸(RSI&lt;30)</td>
+<td>低吸/技术</td>
+<td>-11.72%</td>
+<td>-64.91%</td>
+<td>-0.51</td>
+<td>31.9%</td>
+</tr>
+<tr>
+<td>99</td>
+<td>缩量回调低吸(地量)</td>
+<td>低吸/地量</td>
+<td>-18.58%</td>
+<td>-91.06%</td>
+<td>-0.58</td>
+<td>35.2%</td>
+</tr>
+<tr>
+<td>100</td>
+<td>黄金坑低吸(急跌≥7%反转)</td>
+<td>低吸/急跌</td>
+<td>-15.77%</td>
+<td>-77.64%</td>
+<td>-0.59</td>
+<td>27.5%</td>
+</tr>
+<tr>
+<td>101</td>
+<td>龙回头/反包战法</td>
+<td>短线/龙头</td>
+<td>-1.70%</td>
+<td>-12.26%</td>
+<td>-0.67</td>
+<td>0.0%</td>
+</tr>
+<tr>
+<td>102</td>
+<td>低吸战法(趋势内回调8-25%)</td>
+<td>低吸/回调</td>
+<td>-23.67%</td>
+<td>-90.28%</td>
+<td>-0.76</td>
+<td>35.2%</td>
+</tr>
+<tr>
+<td>103</td>
+<td>支撑低吸(回踩MA60)</td>
+<td>低吸/支撑</td>
+<td>-13.12%</td>
+<td>-72.47%</td>
+<td>-0.76</td>
+<td>35.2%</td>
+</tr>
+<tr>
+<td>104</td>
+<td>跌停翘板(跌停次日卖)</td>
+<td>短线/反转</td>
+<td>-20.67%</td>
+<td>-86.58%</td>
+<td>-1.28</td>
+<td>12.1%</td>
+</tr>
+<tr>
+<td>105</td>
+<td>半路战法(涨5-9%放量,隔日)</td>
+<td>短线/半路</td>
+<td>-28.29%</td>
+<td>-92.59%</td>
+<td>-1.33</td>
+<td>29.7%</td>
+</tr>
+<tr>
+<td>106</td>
+<td>强势股今买明卖(涨3-9%放量)</td>
+<td>短线/动量</td>
+<td>-32.29%</td>
+<td>-95.43%</td>
+<td>-1.36</td>
+<td>34.1%</td>
+</tr>
+<tr>
+<td>107</td>
+<td>KD金叉战法</td>
+<td>短线/技术</td>
+<td>-29.58%</td>
+<td>-94.66%</td>
+<td>-1.60</td>
+<td>25.3%</td>
+</tr>
+<tr>
+<td>108</td>
+<td>尾盘选股(收盘居高位涨0-3%)</td>
+<td>短线/尾盘</td>
+<td>-53.37%</td>
+<td>-99.76%</td>
+<td>-3.41</td>
+<td>12.1%</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="第二部分分类详解">第二部分：分类详解</h2>
+<h3 id="a-短线--打板家族19-个-唯一的真实-alpha">A. 短线 / 打板家族（19 个）—— 唯一的真实 alpha</h3>
+<p>打板家族的核心信号是**"涨停"（涨跌停制度下的事前信息）**，次级信号（跳空、涨幅、半路、尾盘强势）全面失效。越贴近"涨停"越强，越像"强势"越弱。</p>
+<blockquote>
+<p>⚠️ <strong>可执行性提示（2026-09-08 复核）</strong>：下表夏普为"理想成交"口径（按昨日涨停价无限买入）。加入真实成交约束后需整体折价：</p>
+<ul>
+<li><strong>排板口径</strong>（涨停但非一字开盘 → 可排队按涨停价成交）：<code>board_hold</code> 1.59、<code>board_1d</code> 1.55、<code>board_shrink</code> 1.16，仍显著为正。</li>
+<li><strong>次日开盘口径</strong>（只能次日开盘买，开盘即涨停则买不进）：全线转负（约 -0.1 ~ -0.3），因为利润来自"涨停价→次日高开"的隔夜溢价，该价买不到。</li>
+<li>③ 排板口径样本外验证：board_1d OOS <strong>1.73</strong>、board_hold/dragon/first OOS <strong>1.55~1.59</strong>、shrink OOS 仅 <strong>0.80</strong>（全样本 1.42 需打折到 &lt;1.0）。raw 口径 OOS 全线衰减至 1.4~1.7。</li>
+</ul>
+</blockquote>
+<ul>
+<li>实战含义：打板必须走<strong>排板/回封/尾盘</strong>路径，不可次日竞价追高；折价后夏普 1.55~1.73 样本外复现，仍是全场唯一攻击型短线；<strong>缩量板样本外失效</strong>。</li>
+</ul>
+<div class="tw"><table class="tbl">
+<thead>
+<tr>
+<th>策略</th>
+<th>夏普</th>
+<th>年化</th>
+<th>回撤</th>
+<th>一句话逻辑</th>
+<th>解读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>打板连板持有 <code>board_hold</code></td>
+<td>1.89</td>
+<td>79.56%</td>
+<td>-21.21%</td>
+<td>前一交易日涨停的股票全部买入，连板则持有，破板卖出</td>
+<td>涨停制度+情绪溢价的直接兑现，全库最猛进攻</td>
+</tr>
+<tr>
+<td>首板战法 <code>first_board</code></td>
+<td>1.89</td>
+<td>79.56%</td>
+<td>-21.21%</td>
+<td>只买首板（连板数=1），连板持有破板卖</td>
+<td>与 board_hold 完全一致 → <strong>收益几乎全部来自首板</strong>，限制"只买首板"零损耗反而过滤追高</td>
+</tr>
+<tr>
+<td>龙头战法 <code>dragon_head</code></td>
+<td>1.88</td>
+<td>78.70%</td>
+<td>-21.21%</td>
+<td>持有全市场连板数最高 Top8</td>
+<td>"缩量集中最强"不损失 alpha，验证龙头效应极强</td>
+</tr>
+<tr>
+<td>打板今买明卖 <code>board_1d</code></td>
+<td>1.85</td>
+<td>68.69%</td>
+<td>-22.05%</td>
+<td>涨停尾盘买入，<strong>次日无论涨跌卖出</strong></td>
+<td>不赌连板也能 1.85 → <strong>隔夜溢价是打板主来源</strong>，连板只是加分项</td>
+</tr>
+<tr>
+<td>缩量板 <code>board_shrink</code></td>
+<td>1.42</td>
+<td>28.84%</td>
+<td>-10.40%</td>
+<td>只买缩量（&lt;均量）涨停，连板持有破板卖</td>
+<td>缩量=封板死、筹码锁定好，<strong>打板家族里最稳</strong>（回撤仅 -10.4%）</td>
+</tr>
+<tr>
+<td>打板+大盘过滤 <code>board_mktfilter</code></td>
+<td>1.26</td>
+<td>33.25%</td>
+<td>-28.37%</td>
+<td>沪深300 站上 MA20 才持打板，破板卖</td>
+<td>大盘 MA20 过滤"帮倒忙"——确认时已在半山腰，回撤反而更深</td>
+</tr>
+<tr>
+<td>换手板 <code>board_highvol</code></td>
+<td>0.84</td>
+<td>13.56%</td>
+<td>-14.86%</td>
+<td>只买放量≥2倍均量的涨停</td>
+<td>放量=分歧大抛压重，<strong>缩量板 &gt; 换手板</strong></td>
+</tr>
+<tr>
+<td>二板晋级 <code>second_board</code></td>
+<td>0.63</td>
+<td>10.35%</td>
+<td>-30.93%</td>
+<td>只买二板（连板数=2）</td>
+<td>首板→二板 alpha 急剧衰减，胜率仅 17.6%，追二板风险高</td>
+</tr>
+<tr>
+<td>竞价跳空打板 <code>auction_1d</code></td>
+<td>0.52</td>
+<td>4.73%</td>
+<td>-15.10%</td>
+<td>前日开盘跳空≥9%且收阳，尾盘买次日卖</td>
+<td><strong>跳空≠涨停</strong>，胜率崩到 9.9%</td>
+</tr>
+<tr>
+<td>跳空今买明卖 <code>gap_1d</code></td>
+<td>0.42</td>
+<td>7.07%</td>
+<td>-50.58%</td>
+<td>跳空≥3%收阳，尾盘买次日卖</td>
+<td>跳空 3% 强度不足，正收益但回撤 -50%</td>
+</tr>
+<tr>
+<td>情绪共振打板 <code>board_emo</code></td>
+<td>0.16</td>
+<td>0.80%</td>
+<td>-10.71%</td>
+<td>全市场连板家数≥3 才打板</td>
+<td><strong>"情绪高潮"是反向指标</strong>，胜率 2.2%，高潮进场=接盘</td>
+</tr>
+<tr>
+<td>烂板回封 <code>board_bad</code></td>
+<td>0.00</td>
+<td>0.00%</td>
+<td>0.00%</td>
+<td>买"日内开板又回封"的烂板</td>
+<td>样本太少直接死策略（0 笔成交）</td>
+</tr>
+<tr>
+<td>涨停回调 <code>limit_pullback</code></td>
+<td>-0.31</td>
+<td>-15.22%</td>
+<td>-81.87%</td>
+<td>前 1-5 日涨停后回踩 5 日线买</td>
+<td>涨停回踩多数是诱多，回踩失败率远高于成功</td>
+</tr>
+<tr>
+<td>龙回头 <code>dragon_back</code></td>
+<td>-0.67</td>
+<td>-1.70%</td>
+<td>-12.26%</td>
+<td>龙头回调≥12% 后反包买</td>
+<td>胜率 0%：<strong>龙头破板基本走完，没有第二波</strong></td>
+</tr>
+<tr>
+<td>跌停翘板 <code>limitdown_rev</code></td>
+<td>-1.28</td>
+<td>-20.67%</td>
+<td>-86.58%</td>
+<td>跌停尾盘买博反弹次日卖</td>
+<td>跌停的惯性远大于反弹，A股不扶跌停</td>
+</tr>
+<tr>
+<td>半路战法 <code>banlu_1d</code></td>
+<td>-1.33</td>
+<td>-28.29%</td>
+<td>-92.59%</td>
+<td>涨 5-9% 放量未涨停，尾盘买次日卖</td>
+<td><strong>不封板=封不住=弱</strong>，次日几乎必杀</td>
+</tr>
+<tr>
+<td>强势股今买明卖 <code>momo_1d</code></td>
+<td>-1.36</td>
+<td>-32.29%</td>
+<td>-95.43%</td>
+<td>涨 3-9% 放量收阳，尾盘买次日卖</td>
+<td>涨幅没到涨停的"强"全是假强</td>
+</tr>
+<tr>
+<td>KD金叉 <code>kd_cross</code></td>
+<td>-1.60</td>
+<td>-29.58%</td>
+<td>-94.66%</td>
+<td>KD 金叉买、死叉卖</td>
+<td>高频指标交叉 = 纯噪声，成本摩擦毁灭式双击</td>
+</tr>
+<tr>
+<td>尾盘选股 <code>tail_pick</code></td>
+<td><strong>-3.41</strong></td>
+<td>-53.37%</td>
+<td><strong>-99.76%</strong></td>
+<td>收盘居全日高位且涨 0-3%，尾盘买次日卖</td>
+<td><strong>全库最惨</strong>，收盘强势次日全线崩塌，几近归零</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>打板结论：A 股的短线 alpha 严格存在于"涨停"这一个信号。凡是试图用近似信号（涨幅、跳空、半路、尾盘）替代涨停的实验全部失败。<strong>可执行性复核口径下（排板 1.55~1.59），打板仍成立但折价 20-25%，需按排板/回封实操，不可次日追高。</strong></p>
+</blockquote>
+<hr />
+<h3 id="b-大周期--集成26-个-冠军与最优工程方案">B. 大周期 / 集成（26 个）—— 冠军与最优工程方案</h3>
+<p>这一组是本项目的最终成果区，核心方法论是<strong>把多条低相关策略的收益曲线做等权/风险平价融合</strong>（注：是"曲线级融合"，而非"权重复现"，实证差异巨大）。</p>
+<div class="tw"><table class="tbl">
+<thead>
+<tr>
+<th>策略</th>
+<th>夏普</th>
+<th>年化</th>
+<th>回撤</th>
+<th>一句话逻辑</th>
+<th>解读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>海龟×风险平价(曲线50/50) <code>ens_turtle_rp2</code></td>
+<td><strong>2.01</strong></td>
+<td>18.59%</td>
+<td><strong>-7.39%</strong></td>
+<td>沪深300优化海龟曲线 + 全资产RP曲线按 50/50 在<strong>收益曲线层面</strong>融合</td>
+<td>🏆 全场冠军。趋势进攻+分散防守，回撤压到 -7.4%，胜率 75.8%。<strong>最终配置首选</strong></td>
+</tr>
+<tr>
+<td>海龟交易法则 <code>turtle300</code></td>
+<td>1.96</td>
+<td>25.48%</td>
+<td>-9.86%</td>
+<td>唐奇安 20 日新高买/10 日新低卖 + 2.0×ATR 止损（参数扫描优化）</td>
+<td>单指数趋势之王。2019-2026 指数有大趋势段吃满</td>
+</tr>
+<tr>
+<td>海龟+回撤护栏 <code>turtle_guard</code></td>
+<td>1.96</td>
+<td>25.48%</td>
+<td>-9.86%</td>
+<td>海龟 + 峰回撤 10% 锁仓护栏</td>
+<td>与 turtle300 完全一致 → 护栏冗余不损收益，2ATR 止损已够</td>
+</tr>
+<tr>
+<td>海龟×RP 曲线融合+15%波动目标 <code>ens_turtle_rp2_vt</code></td>
+<td>1.90</td>
+<td>29.77%</td>
+<td>-14.71%</td>
+<td>冠军组合加 15% 波动目标杠杆</td>
+<td>加杠杆年化翻到 29.8% 但回撤翻倍，夏普降低 → <strong>冠军组合不要加杠杆</strong></td>
+</tr>
+<tr>
+<td>风险平价(全资产)+15%波动目标 <code>risk_parity_x_vt</code></td>
+<td>1.83</td>
+<td>11.20%</td>
+<td>-7.89%</td>
+<td>全资产RP（1/波动加权）+ 15% 目标波动杠杆</td>
+<td>少数"加杠杆反而夏普升"的组合（分散度够，杠杆加分）</td>
+</tr>
+<tr>
+<td>集成组合(海龟+RP+低波 等权) <code>ens_top3</code></td>
+<td>1.81</td>
+<td>15.38%</td>
+<td><strong>-6.63%</strong></td>
+<td>三条最高夏普策略曲线等权融合</td>
+<td><strong>回撤全场最浅 -6.63%</strong>。三不相关策略等权=极致稳健</td>
+</tr>
+<tr>
+<td>集成组合+15%波动目标 <code>ens_top3_vt</code></td>
+<td>1.80</td>
+<td>26.31%</td>
+<td>-11.52%</td>
+<td>三策略组合加波动目标</td>
+<td>加杠杆后年化 26% 但回撤加深，夏普不变</td>
+</tr>
+<tr>
+<td>顶配3策略 <code>ens_top3b</code></td>
+<td>1.79</td>
+<td>15.64%</td>
+<td>-6.75%</td>
+<td>海龟+全资产RP+低波等权（另种实现）</td>
+<td>与 ens_top3 几乎相同，三策略等权方案高度稳定</td>
+</tr>
+<tr>
+<td>全局集成 <code>ens_global</code></td>
+<td>1.65</td>
+<td>14.06%</td>
+<td>-7.78%</td>
+<td>全资产RP + 股票因子做全局风险平价</td>
+<td>策略加多了被稀释（&lt;1.81），<strong>不是越多越好</strong></td>
+</tr>
+<tr>
+<td>精英集成 <code>ens_elite</code></td>
+<td>1.64</td>
+<td>13.49%</td>
+<td>-7.22%</td>
+<td>夏普≥0.87 的 6 条策略曲线做 RP</td>
+<td>只用高夏普策略分散，稳定在 1.64</td>
+</tr>
+<tr>
+<td>精英集成2.0 <code>ens_elite2</code></td>
+<td>1.57</td>
+<td>14.09%</td>
+<td>-7.67%</td>
+<td>精英6策略+指数增强，7条RP</td>
+<td><strong>多塞较弱策略反而拉低</strong>（1.64→1.57），再次证明别乱加</td>
+</tr>
+<tr>
+<td>风险平价(全资产) <code>risk_parity_x</code></td>
+<td>1.58</td>
+<td>7.15%</td>
+<td>-7.89%</td>
+<td>全资产按年化波动倒数加权（多资产自适应分散）</td>
+<td>防守端又稳又高的底仓组合</td>
+</tr>
+<tr>
+<td>风险平价(1/波动) <code>risk_parity</code></td>
+<td>1.25</td>
+<td>6.40%</td>
+<td>-7.13%</td>
+<td>仅 4 资产（300/500/国债/黄金）波动倒数加权</td>
+<td>资产太少分散不足 → <strong>分散度决定 RP 高度</strong></td>
+</tr>
+<tr>
+<td>超级集成 <code>ens_super</code></td>
+<td>1.45</td>
+<td>10.96%</td>
+<td>-7.18%</td>
+<td>9 条跨资产跨信号策略做 RP（元集成）</td>
+<td>9 条太多，稀释到 1.45。<strong>集成最优规模 3~6 条</strong></td>
+</tr>
+<tr>
+<td>多资产再集成 <code>ens_best</code></td>
+<td>1.21</td>
+<td>13.65%</td>
+<td>-13.35%</td>
+<td>全资产RP+GTAA+横截面动量三者等权</td>
+<td>加入中等策略没提升（1.21 &lt; 1.81）</td>
+</tr>
+<tr>
+<td>多资产再集成+15%波动目标 <code>ens_best_vt</code></td>
+<td>1.16</td>
+<td>24.66%</td>
+<td>-23.65%</td>
+<td>上者加波动目标</td>
+<td>加杠杆回撤飙到 -23.65%，夏普反降 —— 杠杆只在回撤极浅的组合上有正贡献</td>
+</tr>
+<tr>
+<td>波动率目标风险平价 <code>voltarget_rp</code></td>
+<td>0.81</td>
+<td>10.35%</td>
+<td>-18.48%</td>
+<td>4资产RP 后整体缩放至 15% 目标波动</td>
+<td>4资产RP 本身弱，缩放无济于事</td>
+</tr>
+<tr>
+<td>滚动Markowitz最大夏普 <code>markowitz</code></td>
+<td>0.67</td>
+<td>7.09%</td>
+<td>-25.77%</td>
+<td>4 资产滚动估计均值-协方差，最大夏普权重（378天窗口+正则+权重上限）</td>
+<td><strong>均值-方差优化败给简单加权</strong>——估计误差太大</td>
+</tr>
+<tr>
+<td>最小方差组合 <code>minvar</code></td>
+<td>0.65</td>
+<td>1.65%</td>
+<td>-5.74%</td>
+<td>协方差逆矩阵长仓近似最小方差</td>
+<td>回撤极浅但也把收益压没了（1.65%），胜率仅 7.7%</td>
+</tr>
+<tr>
+<td>股债再平衡(60/40) <code>60_40</code></td>
+<td>0.45</td>
+<td>4.60%</td>
+<td>-26.63%</td>
+<td>沪深300 60% + 国债 40% 月调（经典基准）</td>
+<td><strong>躺平 60/40 是 A 股最差选择</strong>，被所有 RP/海龟组合完爆</td>
+</tr>
+<tr>
+<td>永久组合 <code>permanent</code></td>
+<td>0.80</td>
+<td>8.79%</td>
+<td>-16.71%</td>
+<td>沪深300/中证500/国债/黄金各 25% 月调（境内版）</td>
+<td>四资产等权够稳但平庸</td>
+</tr>
+<tr>
+<td>永久组合+趋势过滤 <code>permanent_tf</code></td>
+<td>0.85</td>
+<td>7.63%</td>
+<td>-15.28%</td>
+<td>权益跌破 120 日线转国债</td>
+<td><strong>防御性过滤有效</strong>：0.80→0.85，回撤浅 1.4 个点</td>
+</tr>
+<tr>
+<td>股债跷跷板 <code>stock_bond_seesaw</code></td>
+<td>0.17</td>
+<td>1.46%</td>
+<td>-23.45%</td>
+<td>沪深300 动量&gt;国债则持股</td>
+<td>双资产动量切换远不如全资产 GTAA(1.11)</td>
+</tr>
+<tr>
+<td>宏观战术配置 <code>macro_tactical</code></td>
+<td>-0.06</td>
+<td>-1.44%</td>
+<td>-41.81%</td>
+<td>三维宏观状态机(M2/PMI/CPI)配 300/黄金/国债</td>
+<td>复杂宏观状态机=负收益，宏观择时不划算</td>
+</tr>
+<tr>
+<td>美林时钟 <code>meridian_clock</code></td>
+<td>0.51</td>
+<td>7.52%</td>
+<td>-39.43%</td>
+<td>PMI 定增长 + CPI 定通胀四象限映射资产</td>
+<td>经典时钟在 2019 后 A 股"类滞胀/流动性市"失灵</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>集成结论：<strong>最优方案 = 3~6 条高夏普策略曲线做等权/风险平价融合；波动目标只在分散度极高、回撤极浅的组合上有正贡献；Markowitz 等优化器败给简单加权。</strong></p>
+</blockquote>
+<hr />
+<h3 id="c-多因子--选股17-个">C. 多因子 / 选股（17 个）</h3>
+<p>20 只股票篮（扩展版为 59 只），月度横截面打分选股，目标跑赢等权基准（bench 0.74）。</p>
+<div class="tw"><table class="tbl">
+<thead>
+<tr>
+<th>策略</th>
+<th>夏普</th>
+<th>年化</th>
+<th>回撤</th>
+<th>一句话逻辑</th>
+<th>解读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>个股多因子集成 <code>ens_stkfactor</code></td>
+<td>1.12</td>
+<td>15.97%</td>
+<td>-21.62%</td>
+<td>低波+动量低波+个股动量三因子曲线做 RP</td>
+<td>三股票因子互相分散，强于单因子，但<strong>股票多头天然高波动</strong></td>
+</tr>
+<tr>
+<td>动量+低波复合 <code>mom_lowvol_select</code></td>
+<td>1.08</td>
+<td>19.31%</td>
+<td>-26.43%</td>
+<td>动量z分 − 低波z分复合打分取前 N(8, 252日)</td>
+<td>能涨还稳，<strong>选股因子里最有效组合</strong></td>
+</tr>
+<tr>
+<td>低波动因子(扩池) <code>lowvol_select2</code></td>
+<td>1.08</td>
+<td>15.11%</td>
+<td><strong>-13.90%</strong></td>
+<td>59 只池买波动最低前 5 等权</td>
+<td><strong>低波是 A 股最硬的单个因子</strong>，回撤最浅</td>
+</tr>
+<tr>
+<td>动量-低波-估值(扩池) <code>mom_lowvol_val_select2</code></td>
+<td>1.06</td>
+<td>19.07%</td>
+<td>-18.56%</td>
+<td>动量-低波 + EP/BP 三因子 z 分复合，选 12</td>
+<td>三因子分散后回撤比双因子更抗跌</td>
+</tr>
+<tr>
+<td>动量-低波-估值(篮) <code>mom_lowvol_val_select</code></td>
+<td>1.03</td>
+<td>17.99%</td>
+<td>-30.19%</td>
+<td>同上，20 只篮内，N=5</td>
+<td>篮内版回撤更深</td>
+</tr>
+<tr>
+<td>指数增强 <code>idx_enh</code></td>
+<td>1.03</td>
+<td>19.04%</td>
+<td>-26.50%</td>
+<td>篮内动量-低波 z 分加权多头（非离散选股）</td>
+<td>跑赢等权基准（对表 bench），但加大多头暴露</td>
+</tr>
+<tr>
+<td>动量+低波复合(扩池) <code>mom_lowvol_select2</code></td>
+<td>1.03</td>
+<td>21.07%</td>
+<td>-34.03%</td>
+<td>扩池 59 只，N=8, M=126</td>
+<td>扩池后年化更高但回撤恶化</td>
+</tr>
+<tr>
+<td>低波动因子(篮) <code>lowvol_select</code></td>
+<td>1.00</td>
+<td>14.13%</td>
+<td>-17.28%</td>
+<td>20 只篮内波动最低 N=3</td>
+<td>扩池版(1.08)更优</td>
+</tr>
+<tr>
+<td>动量-低波-质量(篮) <code>mom_lowvol_qual_select</code></td>
+<td>0.97</td>
+<td>19.61%</td>
+<td>-35.75%</td>
+<td>动量-低波 + ROE/增速质量 z 分</td>
+<td><strong>加质量反而回撤更深</strong> → 质量因子在 A 股是减分项</td>
+</tr>
+<tr>
+<td>估值(价值)因子(扩池) <code>val_select2</code></td>
+<td>0.93</td>
+<td>17.01%</td>
+<td>-27.71%</td>
+<td>EP+BP 横截面 z 分选最便宜前 12</td>
+<td><strong>价值因子证伪</strong>：便宜货 2019-2026 不涨反坑</td>
+</tr>
+<tr>
+<td>估值(价值)因子(篮) <code>val_select</code></td>
+<td>0.84</td>
+<td>14.78%</td>
+<td>-35.55%</td>
+<td>同上，篮内 N=8</td>
+<td>篮内更差</td>
+</tr>
+<tr>
+<td>个股动量 <code>stock_mom</code></td>
+<td>0.75</td>
+<td>13.65%</td>
+<td>-38.87%</td>
+<td>12 月收益前 10 等权</td>
+<td>纯动量（不加低波）回撤极大 → <strong>动量必须配低波</strong></td>
+</tr>
+<tr>
+<td>动量+低波+趋势过滤 <code>mom_lowvol_tf</code></td>
+<td>0.76</td>
+<td>10.86%</td>
+<td>-32.78%</td>
+<td>宽基破 120 日线转国债，否则选股</td>
+<td>过滤时机太晚（破 120 日线），胜率掉到 40.7%</td>
+</tr>
+<tr>
+<td>质量因子(篮) <code>qual_select</code></td>
+<td>0.74</td>
+<td>15.98%</td>
+<td><strong>-49.68%</strong></td>
+<td>ROE+营收/利润增速 z 分选前 5</td>
+<td><strong>质量是最差选股因子</strong>：赛道市下 ROE 高未必涨</td>
+</tr>
+<tr>
+<td>质量因子(扩池) <code>qual_select2</code></td>
+<td>0.65</td>
+<td>13.07%</td>
+<td>-48.39%</td>
+<td>同上，扩池 59 选 15</td>
+<td>扩池更差，质量彻底否定</td>
+</tr>
+<tr>
+<td>动量-低波-质量(扩池) <code>mom_lowvol_qual_select2</code></td>
+<td>0.80</td>
+<td>17.25%</td>
+<td>-42.77%</td>
+<td>同上扩池</td>
+<td>扩池后质量拖累更明显</td>
+</tr>
+<tr>
+<td>ML选股 <code>ml_select</code></td>
+<td>0.58</td>
+<td>9.96%</td>
+<td>-52.12%</td>
+<td>价格特征岭回归预测下月收益，多头 Top-10</td>
+<td>纯价格特征 ML &lt; 简单因子 → <strong>小样本 ML 过拟合无 alpha</strong></td>
+</tr>
+<tr>
+<td>基准 <code>bench</code></td>
+<td>0.74</td>
+<td>12.68%</td>
+<td>-37.72%</td>
+<td>20 只个股篮月度等权</td>
+<td>所有有效因子的对表：动量低波等跑赢它</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>选股结论：<strong>动量+低波 = 最优选股；价值/质量/ML 在当前区间全部证伪；篮子越大收益越高、回撤越大，需配防守。</strong></p>
+</blockquote>
+<hr />
+<h3 id="d-多资产--趋势--动量--轮动15-个">D. 多资产 / 趋势 / 动量 / 轮动（15 个）</h3>
+<div class="tw"><table class="tbl">
+<thead>
+<tr>
+<th>策略</th>
+<th>夏普</th>
+<th>年化</th>
+<th>回撤</th>
+<th>一句话逻辑</th>
+<th>解读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>全球战术配置(12月动量) <code>gtaa_mom12</code></td>
+<td>1.11</td>
+<td>11.27%</td>
+<td>-14.87%</td>
+<td>全资产 12 月动量（剔近1月）为正才持有，全负转国债</td>
+<td>跨资产动量轮动稳定有效，所有"轮动"里最好</td>
+</tr>
+<tr>
+<td>全球战术配置+15%波动目标 <code>gtaa_mom12_vt</code></td>
+<td>1.05</td>
+<td>20.67%</td>
+<td>-27.95%</td>
+<td>上者加 15% 波动目标</td>
+<td>加杠杆年化翻倍但回撤 -27.9%，夏普反降</td>
+</tr>
+<tr>
+<td>全球战术配置(SMA200) <code>gtaa_sma200</code></td>
+<td>1.03</td>
+<td>10.42%</td>
+<td>-13.88%</td>
+<td>各资产站上 200 日线才持有，否则转债</td>
+<td>200 日趋势过滤 = 稳健防御，与动量(1.11)接近</td>
+</tr>
+<tr>
+<td>多周期趋势 <code>mltrend</code></td>
+<td>1.04</td>
+<td>10.66%</td>
+<td>-14.82%</td>
+<td>3/6/12 月动量均值 &gt;0 持有，否则转债</td>
+<td>三周期动量平均比单周期稳</td>
+</tr>
+<tr>
+<td>横截面资产动量(Top3) <code>xsmom_top3</code></td>
+<td>1.01</td>
+<td>21.72%</td>
+<td>-27.19%</td>
+<td>全资产按 12 月动量取前 3 等权</td>
+<td>年化 21.7% 高但回撤大</td>
+</tr>
+<tr>
+<td>双重动量 <code>dual_mom</code></td>
+<td>1.01</td>
+<td>21.72%</td>
+<td>-27.19%</td>
+<td>绝对动量&gt;0 且相对动量前 3</td>
+<td>与横截面动量同源同值</td>
+</tr>
+<tr>
+<td>ETF动量轮动(12月) <code>etf_mom12</code></td>
+<td>0.63</td>
+<td>10.60%</td>
+<td>-33.67%</td>
+<td>每月选 12 月收益最高 ETF，全负转国债</td>
+<td>7只同质性高 → 远不如全资产 GTAA(1.11)</td>
+</tr>
+<tr>
+<td>ETF动量轮动(6月) <code>etf_mom6</code></td>
+<td>0.25</td>
+<td>2.98%</td>
+<td>-32.97%</td>
+<td>每月选 6 月收益最高 ETF</td>
+<td>6 月比 12 月噪声大</td>
+</tr>
+<tr>
+<td>商品趋势 <code>comm_trend</code></td>
+<td>0.92</td>
+<td>16.87%</td>
+<td>-26.24%</td>
+<td>有色/能化/豆粕+金银站上 200 日持，否则转债</td>
+<td>吃到 2020-21 商品大牛，2022 后回撤吃掉大半</td>
+</tr>
+<tr>
+<td>多资产海龟 <code>maturtle</code></td>
+<td>0.67</td>
+<td>10.42%</td>
+<td>-17.11%</td>
+<td>各资产唐奇安 20/10 突破持多，否则转债</td>
+<td><strong>远不如单沪深300海龟(1.96)</strong>：2019-26 多资产横盘吃不上趋势</td>
+</tr>
+<tr>
+<td>均值回归 <code>mean_revert</code></td>
+<td>0.21</td>
+<td>2.15%</td>
+<td>-36.59%</td>
+<td>300 跌破均线−2σ 买，突破+σ 转债</td>
+<td>跌破 2σ 后往往是趋势开始而非反弹 → 均值回归在指数不成立</td>
+</tr>
+<tr>
+<td>月初效应 <code>turn_of_month</code></td>
+<td>0.35</td>
+<td>5.09%</td>
+<td>-45.10%</td>
+<td>每月 1-4 日与 22-月末持股，中段转债</td>
+<td>月内日历效应在本区间无效</td>
+</tr>
+<tr>
+<td>季节性轮动 <code>season_rot</code></td>
+<td>0.10</td>
+<td>0.48%</td>
+<td>-34.14%</td>
+<td>5-10 月转债券</td>
+<td>"五穷六绝"信号不明显</td>
+</tr>
+<tr>
+<td>二八轮动 <code>erba_lun</code></td>
+<td>0.17</td>
+<td>1.57%</td>
+<td>-43.06%</td>
+<td>300 vs 500 比较 12 月动量持强者，皆弱转债</td>
+<td>轮动信号被反复打脸</td>
+</tr>
+<tr>
+<td>债券择时 <code>bond_tm</code></td>
+<td>0.52</td>
+<td>5.44%</td>
+<td>-15.97%</td>
+<td>国债单一标的 200 日趋势</td>
+<td>单标的趋势做不好；趋势/动量需分布在多标的上</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>多资产结论：<strong>全资产动量/趋势（GTAA、SMA200、mltrend）是最可靠的跨资产轮动引擎；ETF 池太小、风格同质会大幅削弱；均值回归与日历效应在本区间证伪。</strong></p>
+</blockquote>
+<hr />
+<h3 id="e-宏观--regime4-个-整体偏弱">E. 宏观 / regime（4 个）—— 整体偏弱</h3>
+<div class="tw"><table class="tbl">
+<thead>
+<tr>
+<th>策略</th>
+<th>夏普</th>
+<th>年化</th>
+<th>回撤</th>
+<th>一句话逻辑</th>
+<th>解读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>通胀+流动性二维 <code>macro_dual</code></td>
+<td>0.78</td>
+<td>6.87%</td>
+<td>-21.71%</td>
+<td>CPI/M2 同比趋势四维映射股/金/商品/债</td>
+<td>宏观因子中最强，但对照趋势类仍平庸</td>
+</tr>
+<tr>
+<td>通胀regime <code>macro_inflation</code></td>
+<td>0.71</td>
+<td>5.70%</td>
+<td>-13.73%</td>
+<td>CPI 同比上行持商品+黄金，下行转债</td>
+<td>中国 CPI 长期低位，信号常驻"美式→债券"吃不到收益</td>
+</tr>
+<tr>
+<td>流动性regime <code>macro_liquidity</code></td>
+<td>0.26</td>
+<td>2.22%</td>
+<td>-27.35%</td>
+<td>M2 同比上行持股，下行转债</td>
+<td>M2 与股指相关性近年失效（宽信用不涨），回撤还大</td>
+</tr>
+<tr>
+<td>宏观战术配置 <code>macro_tactical</code></td>
+<td>-0.06</td>
+<td>-1.44%</td>
+<td>-41.81%</td>
+<td>M2+PMI+CPI 三维状态机配 300/黄金/国债</td>
+<td>复杂状态机负收益，宏观数据月度滞后+A股情绪驱动 → 宏观择时被证伪</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>宏观结论：<strong>宏观因子的防御价值远低于趋势过滤（SMA200 / GTAA / MLtrend），A股由资金仓位与情绪主导，宏观数据太滞后。</strong></p>
+</blockquote>
+<hr />
+<h3 id="f-波段--中线--技术面13-个-批量证伪">F. 波段 / 中线 / 技术面（13 个）—— 批量证伪</h3>
+<div class="tw"><table class="tbl">
+<thead>
+<tr>
+<th>策略</th>
+<th>夏普</th>
+<th>年化</th>
+<th>回撤</th>
+<th>一句话逻辑</th>
+<th>解读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>突破波段 <code>breakout_swing</code></td>
+<td>0.71</td>
+<td>14.30%</td>
+<td>-40.73%</td>
+<td>20 日新高持有</td>
+<td>个股突破假突破多，回撤 -40.7%</td>
+</tr>
+<tr>
+<td>箱体突破 <code>range_break</code></td>
+<td>0.36</td>
+<td>5.64%</td>
+<td>-56.49%</td>
+<td>创 60 日新高买，破 20 日低卖</td>
+<td>假突破极多，回撤 -56%（日调版 0.52 略好）</td>
+</tr>
+<tr>
+<td>均线回踩波段 <code>ma_pullback</code></td>
+<td>0.31</td>
+<td>4.26%</td>
+<td>-60.00%</td>
+<td>趋势中回踩 MA20 买，破 MA60 卖</td>
+<td>回踩=半山腰接刀，回撤 -60%（日调 0.45）</td>
+</tr>
+<tr>
+<td>个股趋势 <code>stock_ma</code></td>
+<td>0.43</td>
+<td>7.09%</td>
+<td>-49.63%</td>
+<td>站上 MA20 且 MA20&gt;MA60 买，破 MA60 卖</td>
+<td>单股双均线磨损于震荡；日调(0.61)&gt;月调</td>
+</tr>
+<tr>
+<td>中线趋势 <code>trend_midline</code></td>
+<td>0.26</td>
+<td>3.14%</td>
+<td>-51.53%</td>
+<td>月度持有站上 MA60 且多头个股</td>
+<td>月度持仓滞后惨重</td>
+</tr>
+<tr>
+<td>MACD金叉死叉 <code>macd300</code></td>
+<td>0.30</td>
+<td>2.89%</td>
+<td>-16.25%</td>
+<td>DIF 上穿 DEA 买、下穿卖</td>
+<td>指标交叉在 300 上失效</td>
+</tr>
+<tr>
+<td>唐奇安通道突破 <code>donchian300</code></td>
+<td>0.40</td>
+<td>3.22%</td>
+<td>-12.44%</td>
+<td>唐奇安突破（无 ATR 优化）</td>
+<td>无 AT 的裸突破远不如海龟(1.96)</td>
+</tr>
+<tr>
+<td>个股双均线(茅台) <code>stock_dualma</code></td>
+<td>0.13</td>
+<td>0.76%</td>
+<td>-56.68%</td>
+<td>单只个股双均线</td>
+<td>单票无分散，性能无意义</td>
+</tr>
+<tr>
+<td>双均线趋势 <code>dual_ma300</code></td>
+<td>0.04</td>
+<td>-0.33%</td>
+<td>-42.49%</td>
+<td>沪深300 MA20/60 交叉</td>
+<td>中长均线交叉=滞后+噪声</td>
+</tr>
+<tr>
+<td>双均线短周期 <code>dual_ma_short</code></td>
+<td>0.19</td>
+<td>1.65%</td>
+<td>-19.17%</td>
+<td>沪深300 MA5/20 交叉</td>
+<td>越短越噪声</td>
+</tr>
+<tr>
+<td>RSI反转 <code>rsi300</code></td>
+<td>0.11</td>
+<td>0.58%</td>
+<td>-27.99%</td>
+<td>RSI&lt;35 买 &gt;65 卖</td>
+<td>RSI 在指数上无效</td>
+</tr>
+<tr>
+<td>布林带均值回归 <code>boll300</code></td>
+<td>-0.08</td>
+<td>-0.95%</td>
+<td>-23.23%</td>
+<td>300 布林带(20,2) 均值回归</td>
+<td>布林带回踩=接趋势刀</td>
+</tr>
+<tr>
+<td>暴跌次日买入 <code>crash_nextday</code></td>
+<td>-0.29</td>
+<td>-1.25%</td>
+<td>-18.40%</td>
+<td>300 跌≥2% 次日买</td>
+<td>崩盘次日博弈平手偏亏，无 alpha</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>技术面结论：<strong>唯一有效的趋势系统是唐奇安突破(海龟) + ATR 止损；MACD/RSI/KD/布林/双均线交叉在 A 股指数与个股上全部失效。</strong></p>
+</blockquote>
+<hr />
+<h3 id="g-低吸家族7-个-全灭">G. 低吸家族（7 个）—— 全灭</h3>
+<div class="tw"><table class="tbl">
+<thead>
+<tr>
+<th>策略</th>
+<th>夏普</th>
+<th>年化</th>
+<th>回撤</th>
+<th>一句话逻辑</th>
+<th>解读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BOLL下轨低吸 <code>boll_dip</code></td>
+<td>-0.02</td>
+<td>-2.06%</td>
+<td>-40.79%</td>
+<td>布林下轨低吸</td>
+<td>下轨无支撑</td>
+</tr>
+<tr>
+<td>RSI超卖低吸 <code>rsi_dip</code></td>
+<td>-0.51</td>
+<td>-11.72%</td>
+<td>-64.91%</td>
+<td>RSI&lt;30 且站上 MA60 低吸，RSI&gt;50 卖</td>
+<td>超卖后继续跌</td>
+</tr>
+<tr>
+<td>缩量回调低吸 <code>vol_dip</code></td>
+<td>-0.58</td>
+<td>-18.58%</td>
+<td>-91.06%</td>
+<td>回撤中缩量至均量 60% 以下低吸</td>
+<td>"地量见地价"是传说，回撤 -91%</td>
+</tr>
+<tr>
+<td>黄金坑低吸 <code>golden_pit</code></td>
+<td>-0.59</td>
+<td>-15.77%</td>
+<td>-77.64%</td>
+<td>上升趋势中急跌≥7% 未破 MA60 低吸</td>
+<td>急跌≥7% 通常是反转开端，不是坑</td>
+</tr>
+<tr>
+<td>低吸战法(回调8-25%) <code>dip_uptrend</code></td>
+<td>-0.76</td>
+<td>-23.67%</td>
+<td>-90.28%</td>
+<td>趋势内回调 8-25% 低吸</td>
+<td>回调力度越深，回撤越深</td>
+</tr>
+<tr>
+<td>支撑低吸 <code>support_dip</code></td>
+<td>-0.76</td>
+<td>-13.12%</td>
+<td>-72.47%</td>
+<td>回踩 MA60±2% 低吸，收复 MA20 卖</td>
+<td>A股个股支撑位"用来跌破的"，胜率 35%</td>
+</tr>
+<tr>
+<td>短线KD低吸（归入 KD 家族）</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>与 KD 交叉同为高频噪声</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>低吸结论：<strong>结构性失败——A股个股下行没有支撑只有破位，任何回踩接刀都在用止损换小概率反弹，0.15% 双向成本下净亏。</strong></p>
+</blockquote>
+<hr />
+<h3 id="h-a股特色--另类6-个">H. A股特色 / 另类（6 个）</h3>
+<div class="tw"><table class="tbl">
+<thead>
+<tr>
+<th>策略</th>
+<th>夏普</th>
+<th>年化</th>
+<th>回撤</th>
+<th>一句话逻辑</th>
+<th>解读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>低价可转债等权 <code>cb_lowprice</code></td>
+<td>0.87</td>
+<td>12.45%</td>
+<td>-36.18%</td>
+<td>买价 &lt;105 元转债等权摊大饼</td>
+<td>"下有债底、上随正股"，夏普 0.87 是可用的中低风险多头，但信用收缩期亏损明显</td>
+</tr>
+<tr>
+<td>红利网格 <code>div_grid</code></td>
+<td>0.53</td>
+<td>3.16%</td>
+<td>-6.81%</td>
+<td>红利指数 2.5% 网格</td>
+<td>回撤最浅（-6.8%）但收益极低；红利比宽基适合网格</td>
+</tr>
+<tr>
+<td>北向资金跟随 <code>north_follow</code></td>
+<td>0.46</td>
+<td>5.03%</td>
+<td>-29.23%</td>
+<td>北向 20 日净流入&gt;0 持 300 否则国债</td>
+<td>2024 年后港交所停止披露北向实时数据已失效；且存续期也不赚</td>
+</tr>
+<tr>
+<td>沪深300ETF网格 <code>etf_grid</code></td>
+<td>0.26</td>
+<td>3.17%</td>
+<td>-41.12%</td>
+<td>2.5% 网格破位买突破卖</td>
+<td>指数是趋势市非震荡市，单边下跌每格套一档，回撤 -41%</td>
+</tr>
+<tr>
+<td>二八轮动 <code>erba_lun</code></td>
+<td>0.17</td>
+<td>1.57%</td>
+<td>-43.06%</td>
+<td>300/500 动量择强</td>
+<td>轮动信号被反复打脸</td>
+</tr>
+<tr>
+<td>ETF市场中性（缺失）</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>未纳入</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="第三部分方法论总结工程经验">第三部分：方法论总结（工程经验）</h2>
+<ol type="1">
+<li><strong>数据与口径</strong>：统一口径 2019-2026 / 成本 0.15% / 月调；短线副线需日频再平衡（D调）才公平。<strong>口径必须统一对比</strong>，否则"月调 vs 日调"会误导。</li>
+<li><strong>前视偏差红线</strong>：信号必须在 t-1 日收盘生成、T 日建仓、T 日净值含建仓当日收益。曾因信号泄露产生 45000% 的假值，修掉后见真实结果。</li>
+<li><strong>集成优于单策略、组合优于优化器</strong>：
+<ul>
+<li>曲线级融合（2.01）&gt;&gt; 权重级复现（1.00）；</li>
+<li>3~6 条高夏普策略等权/RP 为最优规模；</li>
+<li>Markowitz/MinVar 等优化器因估计误差败给简单加权。</li>
+</ul></li>
+<li><strong>杠杆使用条件</strong>：波动目标只在"分散度极高 + 回撤极浅"的组合上（如全资产 RP）才有正贡献；对任何单资产或高波动组合加杠杆都是降低夏普。</li>
+<li><strong>风险预算与护栏</strong>：窄止损（海龟 2ATR）、趋势过滤（SMA200/120）能有效压回撤；但大盘 MA20 过滤、情绪过滤这类"晚确认"信号反而帮倒忙。</li>
+</ol>
+<h2 id="附录建议落地的最终配置基于回测">附录：建议落地的最终配置（基于回测）</h2>
+<div class="tw"><table class="tbl">
+<thead>
+<tr>
+<th>层级</th>
+<th>组合</th>
+<th>夏普</th>
+<th>年化</th>
+<th>回撤</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主仓</td>
+<td>海龟×全资产RP 曲线融合 <code>ens_turtle_rp2</code></td>
+<td>2.01（样本外1.84）</td>
+<td>18.59%（OOS 19.9%）</td>
+<td>-7.39%（OOS -7.8%）</td>
+<td>夏普最高、回撤最浅、胜率 75.8%，样本外稳健</td>
+</tr>
+<tr>
+<td>备选进攻</td>
+<td>海龟300 <code>turtle300</code></td>
+<td>1.96</td>
+<td>25.48%</td>
+<td>-9.86%</td>
+<td>想拿更高收益可单挂</td>
+</tr>
+<tr>
+<td>备选防守</td>
+<td>集成组合 <code>ens_top3</code></td>
+<td>1.81</td>
+<td>15.38%</td>
+<td>-6.63%</td>
+<td>回撤全场最浅</td>
+</tr>
+<tr>
+<td>短线卫星（可选）</td>
+<td>首板/龙头/打板隔日</td>
+<td>1.55-1.59（排板口径）</td>
+<td>50-55%</td>
+<td>-18~-21%</td>
+<td>高波动进攻仓，仓位从严控制；<strong>必须排板/尾盘成交，次日追高即亏损</strong></td>
+</tr>
+<tr>
+<td>永续底仓（保守）</td>
+<td>永久组合+趋势过滤 <code>permanent_tf</code></td>
+<td>0.85</td>
+<td>7.63%</td>
+<td>-15.28%</td>
+<td>长期安心持有</td>
+</tr>
+<tr>
+<td>避免</td>
+<td>低吸/KD/RSI/布林/网格/宏观/ML/6月动量/2板/烂板/尾盘</td>
+<td>全负或极低</td>
+<td>—</td>
+<td>—</td>
+<td>全部证伪</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>免责：以上全部为<strong>样本内历史回测</strong>（2019-2026）为主，辅以 2024-2026 样本外独立重跑验证；打板收益依赖涨跌停制度，若制度/流动性变化需重估。<strong>打板家族按"理想成交"口径，真实排板折价约 20-25%（1.89→1.55~1.59）、样本外复现于 1.55~1.73，次日开盘追涨停是亏损口径；冠军 ens_turtle_rp2 样本外为 1.84（非 2.01）。</strong></p>
+</blockquote>
+
+
+<div class="disclaimer">
+  数据源：本地回测总表 INDEX.md（按夏普降序）。本文全部为历史回测（含 2024-2026 样本外复核），不构成投资建议；打板收益依赖涨跌停制度，制度或流动性变化需重估。
+</div>
+
+</body>
+</html>

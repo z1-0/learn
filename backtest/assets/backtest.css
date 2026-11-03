@@ -1,0 +1,57 @@
+/* A股策略回测 108 — 在 reference/dark-theme.css 之上补充表格与提示样式 */
+
+body { max-width: 1040px; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  font-size: .85rem; color: var(--text-muted);
+  padding-bottom: .8rem; margin-bottom: 1.6rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.topbar a { color: var(--text-secondary); }
+
+.lesson-meta { color: var(--text-muted); font-size: .9rem; margin: .6rem 0 2rem; }
+
+/* 大表：横向滚动 */
+.tw { overflow-x: auto; margin: 1.2rem 0; }
+
+table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
+table.tbl th, table.tbl td {
+  border: 1px solid var(--border-color);
+  padding: .5rem .65rem; text-align: left; vertical-align: top;
+}
+table.tbl th {
+  background: var(--bg-secondary); color: var(--accent-blue);
+  font-size: .82rem; white-space: nowrap;
+}
+table.tbl tr:nth-child(even) td { background: rgba(26,26,46,.45); }
+table.tbl code {
+  font-size: .82rem; color: var(--accent-green);
+  background: none; padding: 0;
+}
+
+/* 引用块 → 提示框 */
+blockquote {
+  background: var(--bg-secondary);
+  border-left: 4px solid var(--accent-orange);
+  padding: .8rem 1.2rem; margin: 1.2rem 0;
+  border-radius: 0 4px 4px 0;
+  color: var(--text-secondary); font-size: .95rem;
+}
+blockquote p { margin: .4rem 0; }
+blockquote p:last-child { margin-bottom: 0; }
+blockquote strong { color: var(--text-primary); }
+blockquote ul, blockquote ol { margin: .4rem 0; padding-left: 1.4rem; }
+
+hr { border: none; border-top: 1px solid var(--border-color); margin: 2.2rem 0; }
+
+p { margin: .7rem 0; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: .3rem 0; }
+
+.disclaimer {
+  margin-top: 2.5rem; padding: 1rem 1.2rem;
+  background: var(--bg-secondary); border: 1px dashed var(--border-color);
+  border-radius: 8px; color: var(--text-muted); font-size: .85rem;
+}
