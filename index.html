@@ -3,108 +3,164 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Haskell 学习课程</title>
-<link rel="stylesheet" href="reference/dark-theme.css">
+<title>learn · 笔记库</title>
 <style>
-  .course-header { text-align: center; margin-bottom: 2rem; }
-  .course-header h1 { font-size: 2.2rem; border: none; }
-  .course-header p { color: var(--text-secondary); font-size: 1.1rem; }
-  .phase { margin-bottom: 2.5rem; }
-  .phase-title { font-size: 1.3rem; color: var(--accent-yellow); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem; }
-  .phase-desc { color: var(--text-muted); font-size: 0.9rem; margin-top: -0.5rem; margin-bottom: 1rem; }
-  .lesson-list { list-style: none; padding: 0; }
-  .lesson-list li { padding: 0.5rem 0; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.8rem; }
-  .lesson-list li:last-child { border: none; }
-  .lesson-num { color: var(--accent-blue); font-family: 'Fira Code', monospace; font-size: 0.85rem; min-width: 3rem; }
-  .lesson-status { font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 3px; min-width: 3rem; text-align: center; }
-  .status-ready { background: var(--accent-green); color: #000; }
-  .status-upcoming { background: var(--bg-tertiary); color: var(--text-muted); }
-  .progress-section { margin: 2rem 0; padding: 1.5rem; background: var(--bg-secondary); border-radius: 8px; }
-  .progress-bar { height: 12px; background: var(--bg-tertiary); border-radius: 6px; overflow: hidden; margin: 0.5rem 0; }
-  .progress-fill { height: 100%; background: var(--accent-blue); border-radius: 6px; width: 100%; transition: width 0.3s; }
-  .progress-labels { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); }
-  .quick-links { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin: 1.5rem 0; }
-  .quick-links a { padding: 0.8rem; background: var(--bg-secondary); border-radius: 6px; text-align: center; border: 1px solid var(--border-color); }
-  .quick-links a:hover { border-color: var(--accent-blue); text-decoration: none; }
-  @media (max-width: 600px) { .quick-links { grid-template-columns: 1fr; } }
+:root{
+  --bg:#0f0f23; --bg2:#1a1a2e; --bg3:#16213e;
+  --tx:#e0e0e0; --tx2:#a0a0a0; --tx3:#666;
+  --blue:#88c0d0; --green:#a3be8c; --yellow:#ebcb8b; --orange:#d08770; --red:#bf616a;
+  --line:#2a2a4a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--tx);
+  font-family:'Georgia','Noto Serif SC',serif;
+  line-height:1.8; -webkit-font-smoothing:antialiased;
+  min-height:100vh; padding:4rem 2rem 5rem;
+}
+.wrap{max-width:920px;margin:0 auto}
+
+header{margin-bottom:3.5rem}
+.eyebrow{
+  font-family:'Fira Code',ui-monospace,Menlo,monospace;
+  font-size:.72rem; letter-spacing:.3em; text-transform:uppercase;
+  color:var(--tx3); margin-bottom:1.1rem;
+}
+h1{
+  font-size:2.4rem; font-weight:normal; letter-spacing:-.01em;
+  line-height:1.25; color:var(--tx);
+}
+h1 span{color:var(--blue)}
+.sub{color:var(--tx2); font-size:1rem; margin-top:1rem; max-width:38em}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem}
+@media(max-width:720px){.grid{grid-template-columns:1fr}body{padding:2.5rem 1.25rem 3rem}h1{font-size:1.9rem}}
+
+.card{
+  display:flex; flex-direction:column;
+  background:var(--bg2); border:1px solid var(--line); border-radius:10px;
+  padding:1.5rem 1.6rem 1.4rem; text-decoration:none; color:inherit;
+  transition:border-color .18s ease, transform .18s ease, background .18s ease;
+  position:relative; cursor:pointer;
+}
+.card:hover{border-color:var(--blue);transform:translateY(-2px);background:#1d1d34;text-decoration:none}
+
+.card-top{display:flex;align-items:center;gap:.6rem;margin-bottom:.9rem}
+.tag{
+  font-family:'Fira Code',ui-monospace,monospace; font-size:.68rem;
+  letter-spacing:.14em; text-transform:uppercase;
+  padding:.2rem .5rem; border-radius:3px;
+  background:var(--bg3); color:var(--tx2); border:1px solid var(--line);
+}
+.count{font-size:.78rem;color:var(--tx3);margin-left:auto;font-family:'Fira Code',ui-monospace,monospace}
+.new{
+  font-family:'Fira Code',ui-monospace,monospace; font-size:.62rem;
+  letter-spacing:.12em; padding:.15rem .4rem; border-radius:3px;
+  background:rgba(191,97,106,.16); color:var(--red); border:1px solid rgba(191,97,106,.4);
+}
+
+.card h2{
+  font-size:1.32rem; font-weight:normal; color:var(--tx);
+  margin-bottom:.5rem; letter-spacing:.01em;
+}
+.card:hover h2{color:var(--blue)}
+.cover{position:absolute;inset:0;z-index:1;border-radius:10px}
+.cover:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.card-foot a.alt{position:relative;z-index:2}
+.card p{color:var(--tx2); font-size:.9rem; line-height:1.72;flex:1}
+
+.card-foot{
+  margin-top:1.1rem; padding-top:.9rem; border-top:1px solid var(--line);
+  display:flex; align-items:center; gap:1rem; flex-wrap:wrap;
+  font-size:.82rem;
+}
+.go{color:var(--blue);font-family:'Fira Code',ui-monospace,monospace}
+.alt{color:var(--tx3)}
+.alt:hover{color:var(--tx2)}
+
+footer{
+  margin-top:4rem; padding-top:1.4rem; border-top:1px solid var(--line);
+  color:var(--tx3); font-size:.82rem;
+  display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+}
+footer a{color:var(--tx3);text-decoration:none}
+footer a:hover{color:var(--blue);text-decoration:underline}
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<div class="course-header">
-  <h1>Haskell 学习课程</h1>
-  <p>从已有编程经验出发，系统学习 Haskell</p>
+<header>
+  <div class="eyebrow">z1-0 / learn</div>
+  <h1>笔记<span>库</span></h1>
+  <p class="sub">四个主题，各自独立成册。都是边学边写下沉淀的东西，不是教程的搬运。</p>
+</header>
+
+<div class="grid">
+
+  <article class="card">
+    <a class="cover" href="haskell/" aria-label="Haskell 学习课程"></a>
+    <div class="card-top">
+      <span class="tag">语言</span>
+      <span class="count">25 课 · 完整</span>
+    </div>
+    <h2>Haskell</h2>
+    <p>从已有编程经验出发的系统教程。类型签名、模式匹配起步，中间穿过函子与单子，最后落到并发和实战项目。</p>
+    <div class="card-foot">
+      <span class="go">进入课程 →</span>
+      <span class="alt">GHC 9.10.3</span>
+    </div>
+  </article>
+
+  <article class="card">
+    <a class="cover" href="daban/" aria-label="打板手法拆解"></a>
+    <div class="card-top">
+      <span class="tag">交易</span>
+      <span class="new">NEW</span>
+      <span class="count">1 篇长文</span>
+    </div>
+    <h2>打板手法拆解</h2>
+    <p>55188《一年10倍龙头战法》435 页逐楼蒸馏。指标源码还原、情绪周期判据、卖出脚本，以及那组对不上的胜率数字。</p>
+    <div class="card-foot">
+      <span class="go">阅读拆解 →</span>
+      <span class="alt">12983 楼 / 4.7 万字</span>
+    </div>
+  </article>
+
+  <article class="card">
+    <a class="cover" href="agent/lessons/0001-how-to-read-ai-papers.html" aria-label="Agent 学习"></a>
+    <div class="card-top">
+      <span class="tag">AI</span>
+      <span class="count">1 课 + 术语表</span>
+    </div>
+    <h2>Agent 学习</h2>
+    <p>怎么读一篇 AI 论文：三遍读法、该跳过什么、怎么判断结果是真提升还是调参调出来的。</p>
+    <div class="card-foot">
+      <span class="go">读第一课 →</span>
+      <a class="alt" href="agent/reference/glossary.html">术语表 ↗</a>
+    </div>
+  </article>
+
+  <article class="card">
+    <a class="cover" href="broker/" aria-label="券商服务"></a>
+    <div class="card-top">
+      <span class="tag">服务</span>
+      <span class="count">二维码</span>
+    </div>
+    <h2>券商服务</h2>
+    <p>开户与一对一咨询的入口。投资有风险，入市需谨慎。</p>
+    <div class="card-foot">
+      <span class="go">查看联系方式 →</span>
+    </div>
+  </article>
+
 </div>
 
-<div class="progress-section">
-  <h2>课程进度</h2>
-  <div class="progress-bar">
-    <div class="progress-fill" style="width: 100%"></div>
-  </div>
-  <div class="progress-labels">
-    <span>已完成：25 / 25 课</span>
-    <span>100%</span>
-  </div>
+<footer>
+  <span>4 个主题 · 25 课 + 4 篇</span>
+  <span><a href="https://github.com/z1-0/learn">github.com/z1-0/learn</a></span>
+</footer>
+
 </div>
-
-
-
-<div class="phase">
-  <div class="phase-title">第一阶段：基础入门</div>
-  <div class="phase-desc">目标：能读懂简单 Haskell 代码，理解基本语法</div>
-  <ul class="lesson-list">
-    <li><span class="lesson-num">001</span><a href="haskell/0001-first-steps-in-ghci.html">GHCi 入门</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">002</span><a href="haskell/0002-types-and-type-signatures.html">类型与类型签名</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">003</span><a href="haskell/0003-functions-and-pattern-matching.html">函数定义与模式匹配</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">004</span><a href="haskell/0004-lists-and-recursion.html">列表与递归</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">005</span><a href="haskell/0005-higher-order-functions.html">高阶函数</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">006</span><a href="haskell/0006-tuples-and-algebraic-data-types.html">元组与代数数据类型</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">007</span><a href="haskell/0007-typeclasses.html">类型类基础</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">008</span><a href="haskell/0008-module-system.html">模块系统</a><span class="lesson-status status-ready">✅</span></li>
-  </ul>
-</div>
-
-<div class="phase">
-  <div class="phase-title">第二阶段：核心概念</div>
-  <div class="phase-desc">目标：理解 Haskell 独特概念，能读懂中等复杂度代码</div>
-  <ul class="lesson-list">
-    <li><span class="lesson-num">009</span><a href="haskell/0009-io-and-do-notation.html">IO 与 do 记法</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">010</span><a href="haskell/0010-maybe-and-error-handling.html">Maybe 与错误处理</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">011</span><a href="haskell/0011-functors.html">函子 Functor</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">012</span><a href="haskell/0012-applicatives.html">应用函子 Applicative</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">013</span><a href="haskell/0013-monads.html">单子 Monad</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">014</span><a href="haskell/0014-foldable-and-monoid.html">Foldable 与 Monoid</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">015</span><a href="haskell/0015-lazy-evaluation.html">惰性求值</a><span class="lesson-status status-ready">✅</span></li>
-  </ul>
-</div>
-
-<div class="phase">
-  <div class="phase-title">第三阶段：实践编码</div>
-  <div class="phase-desc">目标：能独立编写小型 Haskell 程序</div>
-  <ul class="lesson-list">
-    <li><span class="lesson-num">016</span><a href="haskell/0016-project-structure.html">项目结构与构建</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">017</span><a href="haskell/0017-file-io.html">文件 IO</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">018</span><a href="haskell/0018-string-processing.html">字符串处理</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">019</span><a href="haskell/0019-data-structures.html">数据结构</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">020</span><a href="haskell/0020-testing-basics.html">测试基础</a><span class="lesson-status status-ready">✅</span></li>
-  </ul>
-</div>
-
-<div class="phase">
-  <div class="phase-title">第四阶段：进阶提升</div>
-  <div class="phase-desc">目标：能读懂和编写中等复杂度的 Haskell 代码</div>
-  <ul class="lesson-list">
-    <li><span class="lesson-num">021</span><a href="haskell/0021-traversable.html">Traversable 与遍历</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">022</span><a href="haskell/0022-monad-transformers.html">Monad Transformers</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">023</span><a href="haskell/0023-parser-combinators.html">解析器组合子</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">024</span><a href="haskell/0024-concurrency.html">并发与并行</a><span class="lesson-status status-ready">✅</span></li>
-    <li><span class="lesson-num">025</span><a href="haskell/0025-final-project.html">实战项目</a><span class="lesson-status status-ready">✅</span></li>
-  </ul>
-</div>
-
-<p style="text-align:center; margin-top:3rem; color:var(--text-muted);">
-  使用 GHC 9.10.3 · Cabal 3.16.1.0 · 基于 Nix / Lisp / Kotlin 背景定制
-</p>
-
 </body>
 </html>
