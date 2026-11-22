@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="locked">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -85,9 +85,125 @@ footer{
 }
 footer a{color:var(--tx3);text-decoration:none}
 footer a:hover{color:var(--blue);text-decoration:underline}
+button.lock{
+  background:none; border:0; padding:0; margin-left:1.1rem;
+  font:inherit; font-size:.82rem;
+  color:var(--tx3); cursor:pointer;
+}
+button.lock:hover{color:var(--blue);text-decoration:underline}
+
+/* ---------- 密码门禁 ---------- */
+html.locked .wrap{display:none}
+
+.gate{
+  position:fixed; inset:0; z-index:50;
+  display:none; align-items:center; justify-content:center;
+  padding:2rem 1.25rem;
+  overflow-y:auto;
+  background:radial-gradient(circle at 50% 0%,#1c1c33 0%,var(--bg) 65%);
+}
+html.locked .gate{display:flex}
+
+.gate-card{
+  width:100%; max-width:360px;
+  background:var(--bg2); border:1px solid var(--line); border-radius:10px;
+  padding:2rem 1.8rem 1.7rem;
+  box-shadow:0 24px 60px -24px #000;
+}
+.gate-card .eyebrow{margin-bottom:.9rem}
+.gate-card h2{
+  font-size:1.32rem; font-weight:normal; color:var(--tx);
+  letter-spacing:.01em; margin-bottom:.4rem;
+}
+.gate-sub{color:var(--tx3); font-size:.86rem; margin-bottom:1.4rem}
+
+.gate-field{display:flex; gap:.6rem}
+.gate-field input{
+  flex:1; min-width:0;
+  background:var(--bg); color:var(--tx);
+  border:1px solid var(--line); border-radius:6px;
+  padding:.62rem .8rem;
+  font-family:'Fira Code',ui-monospace,monospace; font-size:.95rem;
+  letter-spacing:.22em;
+  outline:none;
+  transition:border-color .16s ease, box-shadow .16s ease;
+}
+.gate-field input::placeholder{letter-spacing:.05em; color:var(--tx3)}
+.gate-field input:focus{border-color:var(--blue); box-shadow:0 0 0 3px rgba(136,192,208,.13)}
+.gate-field input:disabled{opacity:.55}
+
+.gate-field button{
+  background:var(--bg3); color:var(--blue);
+  border:1px solid var(--line); border-radius:6px;
+  padding:.62rem 1.05rem; cursor:pointer;
+  font-family:'Fira Code',ui-monospace,monospace; font-size:.82rem;
+  letter-spacing:.08em;
+  transition:border-color .16s ease, color .16s ease, background .16s ease;
+}
+.gate-field button:hover:not(:disabled){border-color:var(--blue); background:#1d2740}
+.gate-field button:disabled{color:var(--tx3); cursor:not-allowed}
+
+.gate-msg{
+  min-height:1.35rem; margin-top:.85rem;
+  font-size:.8rem; color:var(--red);
+  font-family:'Fira Code',ui-monospace,monospace;
+}
+.gate-msg.ok{color:var(--green)}
+
+/* 抖动反馈 */
+@keyframes gate-shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)}
+}
+.gate-card.shake{animation:gate-shake .32s ease}
+@media(prefers-reduced-motion:reduce){
+  .gate-card.shake{animation:none}
+}
+
+noscript p{
+  max-width:34em; margin:0 auto; padding:3rem 1.25rem;
+  color:var(--tx2); font-size:.92rem; text-align:center;
+}
 </style>
+<noscript>
+  <style>
+    /* 禁用 JS 时门禁表单永远解不开，藏掉它，只留下面的说明 */
+    .gate{display:none !important}
+  </style>
+</noscript>
 </head>
 <body>
+
+<noscript>
+  <p>这个页面需要输入密码才能打开，而密码校验依赖 JavaScript。请启用 JavaScript 后刷新。</p>
+</noscript>
+
+<div class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+  <div class="gate-card" id="gate-card">
+    <div class="eyebrow">z1-0 / learn</div>
+    <h2 id="gate-title">需要密码</h2>
+    <p class="gate-sub">输入访问密码后查看笔记库。</p>
+    <form class="gate-field" id="gate-form" autocomplete="off">
+      <input
+        id="gate-input"
+        type="password"
+        name="password"
+        placeholder="密码"
+        aria-label="访问密码"
+        autocomplete="current-password"
+        spellcheck="false"
+        autocapitalize="off"
+        autocorrect="off"
+        required>
+      <button type="submit" id="gate-btn">进入</button>
+    </form>
+    <p class="gate-msg" id="gate-msg" role="status" aria-live="polite"></p>
+  </div>
+</div>
+
 <div class="wrap">
 
 <header>
@@ -218,9 +334,210 @@ footer a:hover{color:var(--blue);text-decoration:underline}
 
 <footer>
   <span>8 个主题 · 25 课 + 16 章 + 7 篇</span>
-  <span><a href="https://github.com/z1-0/learn">github.com/z1-0/learn</a></span>
+  <span>
+    <a href="https://github.com/z1-0/learn">github.com/z1-0/learn</a>
+    <button class="lock" type="button" id="relock" hidden>锁定</button>
+  </span>
 </footer>
 
 </div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* 密码不落明文：这里只存 salt + SHA-256(salt + 密码) 的十六进制摘要。
+     改密码 = 用新密码重算摘要替换 PASS_HASH，并换一个新 salt。 */
+  var SALT = 'learn::v1::';
+  var PASS_HASH = '8a8d84de28d950c1547c10d8f28ccbb6fb76128db97664a9d344c0b56ae41ce0';
+
+  var STORE_KEY = 'learn.unlocked';
+  var MAX_FAILS = 5;
+  var LOCKOUT_MS = 30000;
+
+  var root = document.documentElement;
+  var gate = document.getElementById('gate');
+  var card = document.getElementById('gate-card');
+  var form = document.getElementById('gate-form');
+  var input = document.getElementById('gate-input');
+  var btn = document.getElementById('gate-btn');
+  var msg = document.getElementById('gate-msg');
+  var relock = document.getElementById('relock');
+
+  var fails = 0;
+  var lockedUntil = 0;
+
+  function sha256(str) {
+    var bytes = [];
+    for (var i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i);
+      if (c < 0x80) {
+        bytes.push(c);
+      } else if (c < 0x800) {
+        bytes.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+      } else if (c >= 0xd800 && c < 0xdc00 && i + 1 < str.length) {
+        var lo = str.charCodeAt(++i);
+        var cp = 0x10000 + ((c - 0xd800) << 10) + (lo - 0xdc00);
+        bytes.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 63), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+      } else {
+        bytes.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+      }
+    }
+
+    var K = [
+      0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+      0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+      0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+      0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+      0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+      0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+      0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+      0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+    ];
+    var H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+
+    function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
+
+    var bitLen = bytes.length * 8;
+    bytes.push(0x80);
+    while (bytes.length % 64 !== 56) bytes.push(0);
+    bytes.push(0, 0, 0, 0, (bitLen >>> 24) & 255, (bitLen >>> 16) & 255, (bitLen >>> 8) & 255, bitLen & 255);
+
+    var w = new Array(64);
+    for (var off = 0; off < bytes.length; off += 64) {
+      for (var t = 0; t < 16; t++) {
+        w[t] = (bytes[off + t * 4] << 24) | (bytes[off + t * 4 + 1] << 16) |
+               (bytes[off + t * 4 + 2] << 8) | bytes[off + t * 4 + 3];
+      }
+      for (t = 16; t < 64; t++) {
+        var s0 = rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3);
+        var s1 = rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10);
+        w[t] = (w[t - 16] + s0 + w[t - 7] + s1) | 0;
+      }
+      var a = H[0], b = H[1], c2 = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      for (t = 0; t < 64; t++) {
+        var S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        var ch = (e & f) ^ (~e & g);
+        var t1 = (h + S1 + ch + K[t] + w[t]) | 0;
+        var S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        var maj = (a & b) ^ (a & c2) ^ (b & c2);
+        var t2 = (S0 + maj) | 0;
+        h = g; g = f; f = e; e = (d + t1) | 0;
+        d = c2; c2 = b; b = a; a = (t1 + t2) | 0;
+      }
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c2) | 0; H[3] = (H[3] + d) | 0;
+      H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+    }
+
+    var out = '';
+    for (var j = 0; j < 8; j++) out += ('00000000' + (H[j] >>> 0).toString(16)).slice(-8);
+    return out;
+  }
+
+  /* 定长比较，避免按字符提前返回泄露前缀信息 */
+  function safeEqual(a, b) {
+    if (a.length !== b.length) return false;
+    var diff = 0;
+    for (var i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return diff === 0;
+  }
+
+  function remember() {
+    try { sessionStorage.setItem(STORE_KEY, '1'); } catch (e) { /* 隐私模式下忽略 */ }
+  }
+
+  function recalled() {
+    try { return sessionStorage.getItem(STORE_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function forget() {
+    try { sessionStorage.removeItem(STORE_KEY); } catch (e) { /* 忽略 */ }
+  }
+
+  function unlock() {
+    root.classList.remove('locked');
+    gate.setAttribute('aria-hidden', 'true');
+    if (relock) relock.hidden = false;
+    document.title = 'learn · 笔记库';
+  }
+
+  function lock() {
+    root.classList.add('locked');
+    gate.removeAttribute('aria-hidden');
+    if (relock) relock.hidden = true;
+    msg.textContent = '';
+    msg.className = 'gate-msg';
+    input.value = '';
+    input.disabled = false;
+    btn.disabled = false;
+    document.title = '需要密码 · learn';
+    input.focus();
+  }
+
+  function fail(text) {
+    msg.textContent = text;
+    msg.className = 'gate-msg';
+    card.classList.remove('shake');
+    void card.offsetWidth;
+    card.classList.add('shake');
+  }
+
+  function submit() {
+    var now = Date.now();
+    if (now < lockedUntil) {
+      fail('尝试过多，请 ' + Math.ceil((lockedUntil - now) / 1000) + ' 秒后再试');
+      return;
+    }
+
+    var value = input.value;
+    if (!value) { fail('请输入密码'); return; }
+
+    if (safeEqual(sha256(SALT + value), PASS_HASH)) {
+      msg.textContent = '验证通过';
+      msg.className = 'gate-msg ok';
+      remember();
+      unlock();
+      return;
+    }
+
+    fails++;
+    input.value = '';
+    if (fails >= MAX_FAILS) {
+      lockedUntil = Date.now() + LOCKOUT_MS;
+      fails = 0;
+      input.disabled = true;
+      btn.disabled = true;
+      fail('错误次数过多，已锁定 ' + (LOCKOUT_MS / 1000) + ' 秒');
+      setTimeout(function () {
+        input.disabled = false;
+        btn.disabled = false;
+        msg.textContent = '';
+        input.focus();
+      }, LOCKOUT_MS);
+      return;
+    }
+    fail('密码不对，还可以试 ' + (MAX_FAILS - fails) + ' 次');
+    input.focus();
+  }
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    submit();
+  });
+
+  if (relock) {
+    relock.addEventListener('click', function () {
+      forget();
+      lock();
+    });
+  }
+
+  if (recalled()) {
+    unlock();
+  } else {
+    lock();
+  }
+})();
+</script>
 </body>
 </html>
